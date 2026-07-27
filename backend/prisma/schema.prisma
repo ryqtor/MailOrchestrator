@@ -1,0 +1,201 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum CampaignStatus {
+  DRAFT
+  SCHEDULED
+  PROCESSING
+  COMPLETED
+  FAILED
+  PAUSED
+}
+
+enum RecipientStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  BOUNCED
+}
+
+enum ScheduledEmailStatus {
+  PENDING
+  PROCESSING
+  SENT
+  FAILED
+  CANCELLED
+}
+
+enum LogEventType {
+  CAMPAIGN_CREATED
+  JOB_SCHEDULED
+  WORKER_STARTED
+  EMAIL_SENT
+  RETRY
+  FAILURE
+  RATE_LIMITED
+  RECOVERY
+}
+
+model User {
+  id           String          @id @default(uuid())
+  email        String          @unique
+  name         String
+  avatarUrl    String?
+  googleId     String?         @unique
+  passwordHash String?
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  senders      EmailSender[]
+  campaigns    EmailCampaign[]
+
+  @@index([email])
+}
+
+model EmailSender {
+  id             String          @id @default(uuid())
+  userId         String
+  name           String
+  fromEmail      String
+  smtpHost       String?
+  smtpPort       Int?            @default(587)
+  smtpUser       String?
+  smtpPass       String?
+  isEthereal     Boolean         @default(true)
+  maxPerHour     Int             @default(500)
+  minDelayMs     Int             @default(100)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns      EmailCampaign[]
+  scheduled      ScheduledEmail[]
+  rateLimiters   RateLimitCounter[]
+
+  @@index([userId])
+  @@index([fromEmail])
+}
+
+model EmailCampaign {
+  id              String          @id @default(uuid())
+  userId          String
+  senderId        String
+  title           String
+  subject         String
+  bodyTemplate    String          @db.Text
+  status          CampaignStatus  @default(DRAFT)
+  scheduledAt     DateTime?
+  totalRecipients Int             @default(0)
+  sentCount       Int             @default(0)
+  failedCount     Int             @default(0)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  sender          EmailSender     @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  recipients      EmailRecipient[]
+  scheduledEmails ScheduledEmail[]
+  logs            EmailLog[]
+
+  @@index([userId])
+  @@index([senderId])
+  @@index([status])
+  @@index([scheduledAt])
+  @@index([createdAt])
+}
+
+model EmailRecipient {
+  id           String          @id @default(uuid())
+  campaignId   String
+  email        String
+  metadataJson Json?
+  status       RecipientStatus @default(PENDING)
+  sentAt       DateTime?
+  errorMessage String?
+  createdAt    DateTime        @default(now())
+
+  campaign        EmailCampaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  scheduledEmails ScheduledEmail[]
+
+  @@unique([campaignId, email])
+  @@index([campaignId])
+  @@index([status])
+  @@index([email])
+}
+
+model ScheduledEmail {
+  id           String               @id @default(uuid())
+  campaignId   String
+  recipientId  String
+  senderId     String
+  status       ScheduledEmailStatus @default(PENDING)
+  scheduledFor DateTime             @default(now())
+  jobId        String?              @unique
+  attempts     Int                  @default(0)
+  maxAttempts  Int                  @default(3)
+  lastError    String?
+  sentAt       DateTime?
+  createdAt    DateTime             @default(now())
+  updatedAt    DateTime             @updatedAt
+
+  campaign     EmailCampaign        @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  recipient    EmailRecipient       @relation(fields: [recipientId], references: [id], onDelete: Cascade)
+  sender       EmailSender          @relation(fields: [senderId], references: [id], onDelete: Restrict)
+  logs         EmailLog[]
+
+  @@index([campaignId, status])
+  @@index([scheduledFor, status])
+  @@index([senderId, status])
+  @@index([status])
+  @@index([jobId])
+}
+
+model EmailLog {
+  id           String         @id @default(uuid())
+  campaignId   String
+  emailId      String?
+  eventType    LogEventType
+  detailsJson  Json?
+  createdAt    DateTime       @default(now())
+
+  campaign     EmailCampaign   @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  scheduled    ScheduledEmail? @relation(fields: [emailId], references: [id], onDelete: SetNull)
+
+  @@index([campaignId])
+  @@index([emailId])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+model WorkerState {
+  workerId           String   @id
+  hostname           String
+  status             String   // RUNNING, IDLE, STOPPED, CRASHED
+  currentConcurrency Int      @default(5)
+  processedCount     Int      @default(0)
+  errorCount         Int      @default(0)
+  lastHeartbeat      DateTime @default(now())
+  startedAt          DateTime @default(now())
+
+  @@index([lastHeartbeat])
+  @@index([status])
+}
+
+model RateLimitCounter {
+  id          String      @id @default(uuid())
+  senderId    String
+  windowStart DateTime
+  count       Int         @default(0)
+
+  sender      EmailSender @relation(fields: [senderId], references: [id], onDelete: Cascade)
+
+  @@unique([senderId, windowStart])
+  @@index([senderId, windowStart])
+}
