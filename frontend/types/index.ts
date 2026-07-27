@@ -66,6 +66,13 @@ export interface SystemMetrics {
     failed: number;
     completed: number;
   };
+  rateLimit?: {
+    maxPerHour: number;
+    used: number;
+    remaining: number;
+    resetInMinutes: number;
+    resetInMs: number;
+  };
   telemetry: {
     sentToday: number;
     failedToday: number;
@@ -73,5 +80,9 @@ export interface SystemMetrics {
     processingCampaigns: number;
     totalRecipients: number;
     activeWorkers: number;
+    retryCount?: number;
+    averageSendTimeMs?: number;
+    workerUtilizationPct?: number;
+    smtpThroughputPerMin?: number;
   };
 }

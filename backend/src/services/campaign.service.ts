@@ -16,13 +16,19 @@ export interface CSVRecipientRow {
   [key: string]: unknown;
 }
 
+export interface InvalidCSVRow {
+  line: number;
+  row: Record<string, string>;
+  reason: string;
+}
+
 export class CampaignService {
   private campaignRepo = new CampaignRepository();
   private recipientRepo = new RecipientRepository();
   private scheduledEmailRepo = new ScheduledEmailRepository();
   private senderRepo = new SenderRepository();
 
-  public parseCSVBuffer(buffer: Buffer): CSVRecipientRow[] {
+  public parseCSVBuffer(buffer: Buffer): { validRows: CSVRecipientRow[]; invalidRows: InvalidCSVRow[] } {
     try {
       const records = parse(buffer, {
         columns: true,
@@ -32,30 +38,49 @@ export class CampaignService {
 
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       const validRows: CSVRecipientRow[] = [];
+      const invalidRows: InvalidCSVRow[] = [];
+
+      let lineNum = 2; // Line 1 is headers
 
       for (const row of records) {
         const emailKey = Object.keys(row).find((k) => k.toLowerCase() === 'email');
-        if (!emailKey) continue;
+        
+        if (!emailKey) {
+          invalidRows.push({
+            line: lineNum++,
+            row,
+            reason: 'Missing email column header',
+          });
+          continue;
+        }
 
         const rawEmail = row[emailKey]?.trim();
-        if (rawEmail && emailRegex.test(rawEmail)) {
-          const metadata: Record<string, unknown> = { ...row };
-          delete metadata[emailKey];
-
-          validRows.push({
-            email: rawEmail,
-            name: row.name || row.Name || row.first_name,
-            company: row.company || row.Company,
-            ...metadata,
+        if (!rawEmail || !emailRegex.test(rawEmail)) {
+          invalidRows.push({
+            line: lineNum++,
+            row,
+            reason: !rawEmail ? 'Empty email field' : `Invalid email syntax: "${rawEmail}"`,
           });
+          continue;
         }
+
+        const metadata: Record<string, unknown> = { ...row };
+        delete metadata[emailKey];
+
+        validRows.push({
+          email: rawEmail,
+          name: row.name || row.Name || row.first_name,
+          company: row.company || row.Company,
+          ...metadata,
+        });
+        lineNum++;
       }
 
-      if (validRows.length === 0) {
-        throw new BadRequestError('CSV file contains no valid email addresses');
+      if (validRows.length === 0 && invalidRows.length === 0) {
+        throw new BadRequestError('CSV file is empty');
       }
 
-      return validRows;
+      return { validRows, invalidRows };
     } catch (err: unknown) {
       if (err instanceof BadRequestError) throw err;
       throw new BadRequestError(`Failed to parse CSV file: ${err instanceof Error ? err.message : 'Invalid format'}`);
@@ -82,7 +107,6 @@ export class CampaignService {
       if (!sender) throw new NotFoundError('Specified EmailSender not found');
     }
 
-    // Update sender rate limit settings if custom options provided
     if (params.minDelayMs !== undefined || params.maxPerHour !== undefined) {
       await prisma.emailSender.update({
         where: { id: senderId },

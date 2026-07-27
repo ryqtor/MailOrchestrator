@@ -49,7 +49,11 @@ export class CampaignController {
         throw new BadRequestError('title, subject, and bodyTemplate are required text fields');
       }
 
-      const recipients = campaignService.parseCSVBuffer(file.buffer);
+      const { validRows, invalidRows } = campaignService.parseCSVBuffer(file.buffer);
+
+      if (validRows.length === 0) {
+        throw new BadRequestError('No valid recipient email addresses found in CSV file');
+      }
 
       const campaign = await campaignService.createAndLaunchCampaign({
         userId,
@@ -60,14 +64,16 @@ export class CampaignController {
         scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
         minDelayMs: minDelayMs ? Number(minDelayMs) : undefined,
         maxPerHour: maxPerHour ? Number(maxPerHour) : undefined,
-        recipients,
+        recipients: validRows,
       });
 
       res.status(201).json({
         success: true,
         data: {
           campaign,
-          parsedCount: recipients.length,
+          parsedCount: validRows.length,
+          invalidCount: invalidRows.length,
+          invalidRows,
         },
       });
     } catch (err) {

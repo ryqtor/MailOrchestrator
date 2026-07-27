@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
-import { Upload, FileText, Send, AlertCircle, Clock } from 'lucide-react';
+import { Upload, FileText, Send, AlertCircle, Clock, Download, Eye } from 'lucide-react';
 
 export default function CampaignBuilderPage() {
   const router = useRouter();
@@ -21,13 +21,72 @@ export default function CampaignBuilderPage() {
 
   const [csvFile, setCsvFile] = useState<File | null>(null);
   const [manualCSVText, setManualCSVText] = useState(
-    'email,name,company\nalex.dev@example.com,Alex Developer,Acme Corp\nsarah.eng@example.com,Sarah Engineer,Vercel Inc\njordan.arch@example.com,Jordan Architect,Stripe Labs'
+    'email,name,company\nalex.dev@example.com,Alex Developer,Acme Corp\nsarah.eng@example.com,Sarah Engineer,Vercel Inc\njordan.arch@example.com,Jordan Architect,Stripe Labs\ninvalid-email-string,John Invalid,Bad Co'
   );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [selectedSampleIndex, setSelectedSampleIndex] = useState<number>(0);
 
-  const parsedContactCount = csvFile
-    ? 150
-    : manualCSVText.trim().split('\n').filter((l) => l.includes('@')).length;
+  // Client-side CSV parsing for live contact count & invalid row detection
+  const parseClientCSV = () => {
+    const lines = manualCSVText.trim().split('\n');
+    const valid: Array<{ email: string; name?: string; company?: string }> = [];
+    const invalid: Array<{ line: number; row: string; reason: string }> = [];
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(',').map((p) => p.trim());
+      const email = parts[0];
+      if (email && emailRegex.test(email)) {
+        valid.push({
+          email,
+          name: parts[1] || email.split('@')[0],
+          company: parts[2] || 'Valued Partner',
+        });
+      } else if (lines[i].trim().length > 0) {
+        invalid.push({
+          line: i + 1,
+          row: lines[i],
+          reason: !email ? 'Empty email field' : `Invalid email syntax: "${email}"`,
+        });
+      }
+    }
+    return { valid, invalid };
+  };
+
+  const { valid: validContacts, invalid: invalidRows } = parseClientCSV();
+  const parsedContactCount = csvFile ? 150 : validContacts.length;
+
+  // Download invalid CSV rows feature
+  const handleDownloadInvalidRows = () => {
+    if (invalidRows.length === 0) return;
+    const csvContent =
+      'line_number,raw_row_data,failure_reason\n' +
+      invalidRows.map((r) => `${r.line},"${r.row.replace(/"/g, '""')}","${r.reason}"`).join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `invalid_recipient_rows_${Date.now()}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Sample recipient for live template preview
+  const sampleRecipient = validContacts[selectedSampleIndex] || {
+    email: 'john.doe@example.com',
+    name: 'John Doe',
+    company: 'Acme Growth',
+  };
+
+  const renderTemplate = (text: string) => {
+    return text
+      .replace(/\{\{\s*name\s*\}\}/g, sampleRecipient.name || 'Friend')
+      .replace(/\{\{\s*company\s*\}\}/g, sampleRecipient.company || 'your team')
+      .replace(/\{\{\s*email\s*\}\}/g, sampleRecipient.email);
+  };
 
   const minDelayMs = minDelaySeconds * 1000;
   const estimatedSeconds = Math.ceil(
@@ -53,25 +112,7 @@ export default function CampaignBuilderPage() {
         if (!res.success) throw new Error(res.error?.message || 'Upload failed');
         return res.data;
       } else {
-        const lines = manualCSVText.trim().split('\n');
-        const headers = lines[0].split(',').map((h) => h.trim().toLowerCase());
-        const emailIndex = headers.indexOf('email');
-        const nameIndex = headers.indexOf('name');
-        const companyIndex = headers.indexOf('company');
-
-        const recipients: Array<{ email: string; name?: string; company?: string }> = [];
-        for (let i = 1; i < lines.length; i++) {
-          const parts = lines[i].split(',').map((p) => p.trim());
-          if (parts[emailIndex]) {
-            recipients.push({
-              email: parts[emailIndex],
-              name: parts[nameIndex] || undefined,
-              company: parts[companyIndex] || undefined,
-            });
-          }
-        }
-
-        if (recipients.length === 0) {
+        if (validContacts.length === 0) {
           throw new Error('Please provide at least 1 valid recipient email');
         }
 
@@ -82,7 +123,7 @@ export default function CampaignBuilderPage() {
           scheduledAt: scheduledAt ? new Date(scheduledAt) : undefined,
           minDelayMs,
           maxPerHour,
-          recipients,
+          recipients: validContacts,
         } as any);
         return res.data;
       }
@@ -103,7 +144,7 @@ export default function CampaignBuilderPage() {
       <div className="border-b border-[#DDD8D1] pb-4">
         <h1 className="text-2xl font-serif font-semibold text-[#1F1F1F]">Campaign Builder</h1>
         <p className="text-xs text-[#6B6B6B] mt-1 font-sans">
-          Notion-style inline document workflow for sequence composition, recipient lead parsing, and rate limiting controls.
+          Notion-style inline document workflow with live template preview, invalid CSV row cleanup, and rate controls.
         </p>
       </div>
 
@@ -122,7 +163,7 @@ export default function CampaignBuilderPage() {
             <span className="editorial-label block mb-1">Campaign Name</span>
             <input
               type="text"
-              placeholder="e.g. Summer Outreach Sequence"
+              placeholder="e.g. Q3 High-Intent Outreach"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full px-3 py-2 rounded bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs font-serif focus:outline-none focus:border-[#A34A22]"
@@ -141,16 +182,28 @@ export default function CampaignBuilderPage() {
           </div>
         </div>
 
-        {/* Lead Recipients & File Upload */}
+        {/* Lead Recipients & Invalid Row Exporter */}
         <div className="border-t border-[#DDD8D1] pt-5 space-y-3">
           <div className="flex items-center justify-between">
             <span className="editorial-label flex items-center gap-2">
               <FileText className="w-3.5 h-3.5 text-[#A34A22]" />
               Recipient Leads Source
             </span>
-            <span className="px-2.5 py-0.5 rounded bg-[#FAF8F5] text-[#1B7F4B] border border-[#DDD8D1] text-xs font-mono font-bold">
-              {parsedContactCount} emails detected
-            </span>
+            <div className="flex items-center gap-2 font-mono text-xs">
+              <span className="px-2 py-0.5 rounded bg-[#FAF8F5] text-[#1B7F4B] border border-[#DDD8D1] font-bold">
+                {parsedContactCount} valid contacts
+              </span>
+              {invalidRows.length > 0 && (
+                <button
+                  type="button"
+                  onClick={handleDownloadInvalidRows}
+                  className="flex items-center gap-1 px-2.5 py-0.5 rounded bg-[#FAF8F5] text-[#B42318] border border-[#DDD8D1] hover:bg-[#DDD8D1]/40 transition-colors"
+                >
+                  <Download className="w-3 h-3" />
+                  <span>Download {invalidRows.length} Invalid Rows (.csv)</span>
+                </button>
+              )}
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -183,8 +236,8 @@ export default function CampaignBuilderPage() {
           </div>
         </div>
 
-        {/* Email Body & Variables */}
-        <div className="border-t border-[#DDD8D1] pt-5 space-y-2">
+        {/* Email Body & Interactive Live Template Previewer */}
+        <div className="border-t border-[#DDD8D1] pt-5 space-y-4">
           <div className="flex items-center justify-between">
             <span className="editorial-label">Template Body</span>
             <div className="flex gap-1">
@@ -201,11 +254,47 @@ export default function CampaignBuilderPage() {
             </div>
           </div>
           <textarea
-            rows={5}
+            rows={4}
             value={bodyTemplate}
             onChange={(e) => setBodyTemplate(e.target.value)}
             className="w-full px-3 py-2 rounded bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] font-mono text-xs focus:outline-none focus:border-[#A34A22]"
           />
+
+          {/* Interactive Template Preview Box */}
+          <div className="p-4 bg-[#FAF8F5] border border-[#DDD8D1] rounded space-y-2 font-mono text-xs">
+            <div className="flex items-center justify-between border-b border-[#DDD8D1] pb-2">
+              <span className="editorial-label flex items-center gap-1.5">
+                <Eye className="w-3.5 h-3.5 text-[#A34A22]" />
+                Live Rendered Email Preview
+              </span>
+              {validContacts.length > 0 && (
+                <select
+                  value={selectedSampleIndex}
+                  onChange={(e) => setSelectedSampleIndex(Number(e.target.value))}
+                  className="px-2 py-0.5 rounded bg-[#FFFFFF] border border-[#DDD8D1] text-[11px] text-[#1F1F1F] font-mono"
+                >
+                  {validContacts.map((c, idx) => (
+                    <option key={idx} value={idx}>
+                      Sample {idx + 1}: {c.name} ({c.email})
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="space-y-1 pt-1">
+              <div>
+                <span className="text-[#6B6B6B]">To:</span> <strong className="text-[#1F1F1F]">{sampleRecipient.email}</strong>
+              </div>
+              <div>
+                <span className="text-[#6B6B6B]">Subject:</span>{' '}
+                <strong className="text-[#1F1F1F]">{renderTemplate(subject || 'Campaign Subject')}</strong>
+              </div>
+              <div className="pt-2 text-[#1F1F1F] whitespace-pre-wrap font-sans text-xs bg-[#FFFFFF] p-3 border border-[#DDD8D1] rounded">
+                {renderTemplate(bodyTemplate)}
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Scheduling & Rate Limiting Controls */}
@@ -246,7 +335,6 @@ export default function CampaignBuilderPage() {
             </div>
           </div>
 
-          {/* Queue Math Pill */}
           <div className="p-3 rounded bg-[#FAF8F5] border border-[#DDD8D1] flex items-center justify-between text-xs font-mono">
             <div className="flex items-center gap-2 text-[#6B6B6B]">
               <Clock className="w-4 h-4 text-[#A34A22]" />
@@ -270,7 +358,7 @@ export default function CampaignBuilderPage() {
             ) : (
               <>
                 <Send className="w-3.5 h-3.5" />
-                <span>Schedule Campaign</span>
+                <span>Schedule Campaign Pipeline</span>
               </>
             )}
           </button>

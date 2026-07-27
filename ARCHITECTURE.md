@@ -1,14 +1,14 @@
 # MailOrchestrator - System Architecture & Technical Specifications
 
-This document outlines the engineering architecture, concurrency design, idempotency model, rate limiting algorithm, and crash recovery strategy of **MailOrchestrator**.
+This document outlines the engineering architecture, concurrency design, idempotency model, rate limiting algorithm, and worker monitoring strategy of **MailOrchestrator**.
 
 ---
 
-## 1. High-Level Architecture Diagram
+## 1. High-Level System Architecture Diagram
 
 ```mermaid
 graph TD
-    Client["Next.js 15 Dashboard (React Query)"]
+    Client["Next.js 15 Frontend (Google OAuth)"]
     API["Express REST API Service (Clean Arch)"]
     DB[("PostgreSQL DB (Source of Truth)")]
     Redis[("Redis (BullMQ & Atomic Counters)")]
@@ -17,8 +17,8 @@ graph TD
     SMTP["Nodemailer Transporter (SMTP / Ethereal)"]
 
     Client -->|HTTP REST / Cookies| API
-    API -->|Prisma ORM Queries & Locks| DB
-    API -->|Enqueue Jobs (Delayed/Bulk)| Redis
+    API -->|Prisma ORM Queries & Status Locks| DB
+    API -->|Enqueue Delayed / Batch Jobs| Redis
     Worker1 -->|Poll & Pop Jobs| Redis
     Worker2 -->|Poll & Pop Jobs| Redis
     Worker1 -->|Atomic Status Lock PENDING->PROCESSING| DB
@@ -48,19 +48,19 @@ sequenceDiagram
     participant SMTP as SMTP / Ethereal
 
     User->>API: POST /campaigns/upload (CSV + Template)
-    API->>API: Parse CSV & validate recipient emails
+    API->>API: Parse CSV (separate valid and invalid rows)
     API->>DB: Insert Campaign & bulk insert Recipient rows
     API->>DB: Insert ScheduledEmail rows (Status: PENDING)
     API->>Producer: Schedule batch jobs into BullMQ
     Producer->>Redis: Enqueue jobs (opts: delay, attempts=3)
-    API->>User: 201 Created (Campaign Processing)
+    API->>User: 201 Created (Campaign Processing + Invalid Rows Download)
 
     loop Asynchronous Worker Execution
         Worker->>Redis: Pop job (emailId, senderId, campaignId)
         Worker->>DB: ATOMIC LOCK: UPDATE ScheduledEmail SET status='PROCESSING' WHERE id=emailId AND status='PENDING'
         alt Lock failed (count == 0)
             DB-->>Worker: Lock failed (Already claimed)
-            Worker-->>Redis: Ack job as no-op (Zero duplicate send guarantee)
+            Worker-->>Redis: Ack job as no-op (Database-backed Idempotency Protection)
         else Lock acquired (count == 1)
             Worker->>Limiter: INCR ratelimit:sender:{senderId}:window:{hour}
             alt Limit Exceeded (> MAX_EMAILS_PER_HOUR)
@@ -83,22 +83,82 @@ sequenceDiagram
 
 ---
 
-## 3. Idempotency & Zero Duplicate Send Guarantees
+## 3. Entity-Relationship (ER) Model Diagram
 
-### Problem Statement
-In distributed email workers, duplicate job execution can occur due to:
-1. Worker crash immediately after sending email before acknowledging job to BullMQ.
-2. Network timeout between worker and BullMQ causing BullMQ to re-assign the job to another worker.
-3. Concurrent parallel workers picking up identical scheduled times.
+```mermaid
+erDiagram
+    USER ||--o{ EMAIL_SENDER : owns
+    USER ||--o{ EMAIL_CAMPAIGN : creates
+    EMAIL_SENDER ||--o{ EMAIL_CAMPAIGN : sends_with
+    EMAIL_CAMPAIGN ||--o{ EMAIL_RECIPIENT : contains
+    EMAIL_CAMPAIGN ||--o{ SCHEDULED_EMAIL : schedules
+    EMAIL_RECIPIENT ||--o{ SCHEDULED_EMAIL : targeted_by
+    EMAIL_CAMPAIGN ||--o{ EMAIL_LOG : records
 
-### Architectural Solution
-MailOrchestrator enforces **Database-Level Atomic Conditional Status Locking**:
+    USER {
+        string id PK
+        string email UK
+        string name
+        string avatarUrl
+        string googleId UK
+    }
+
+    EMAIL_SENDER {
+        string id PK
+        string name
+        string fromEmail
+        int maxPerHour
+        int minDelayMs
+    }
+
+    EMAIL_CAMPAIGN {
+        string id PK
+        string title
+        string subject
+        string bodyTemplate
+        string status
+        int totalRecipients
+        int sentCount
+        int failedCount
+    }
+
+    EMAIL_RECIPIENT {
+        string id PK
+        string campaignId FK
+        string email
+        json metadataJson
+        string status
+    }
+
+    SCHEDULED_EMAIL {
+        string id PK
+        string campaignId FK
+        string recipientId FK
+        string status
+        datetime scheduledFor
+        string jobId UK
+        int attempts
+    }
+
+    EMAIL_LOG {
+        string id PK
+        string campaignId FK
+        string eventType
+        json detailsJson
+    }
+```
+
+---
+
+## 4. Database-backed Idempotency Protection
+
+In distributed email worker clusters, duplicate job execution can occur due to worker crashes or network timeouts. MailOrchestrator enforces **Database-backed Idempotency Protection**:
 
 ```typescript
 const result = await prisma.scheduledEmail.updateMany({
   where: {
     id: emailId,
-    status: ScheduledEmailStatus.PENDING, // Conditional check
+    status: ScheduledEmailStatus.PENDING, // Conditional status check
   },
   data: {
     status: ScheduledEmailStatus.PROCESSING, // Atomic state transition
@@ -107,33 +167,17 @@ const result = await prisma.scheduledEmail.updateMany({
 });
 
 if (result.count === 0) {
-  // Lock failed: another worker or retry has already claimed or completed this email.
-  // Job exits cleanly as a no-op!
+  // Lock failed: another worker node or retry attempt already claimed/sent this email.
   return { status: 'skipped_duplicate' };
 }
 ```
 
-Because PostgreSQL executes `UPDATE ... WHERE status = 'PENDING'` under strict row-level lock isolation, **only one worker process can succeed** in transitioning the state. Any duplicate or retried job will see `result.count === 0` and terminate without invoking SMTP.
-
 ---
 
-## 4. Rate Limiting Strategy
-
-MailOrchestrator implements a **Redis-backed Atomic Sliding Window Rate Limiter**:
+## 5. Redis Atomic Rate Limiting Algorithm
 
 - **Key Format**: `ratelimit:sender:{senderId}:window:{hourTimestamp}`
 - **Atomic Counter**: Uses Redis `INCR` to track outbound emails sent within the current hour window.
 - **Window Reset Calculation**:
   $$\text{DelayMs} = \text{NextHourTimestamp} - \text{CurrentTime}$$
-- When a worker encounters an over-limit counter (`currentCount > maxPerHour`), it:
-  1. Reverts the DB status to `PENDING`.
-  2. Enqueues a delayed job in BullMQ scheduled for $\text{DelayMs}$ into the future.
-  3. Preserves exact email delivery order without discarding any jobs.
-
----
-
-## 5. Crash Recovery & Safe Worker Restarts
-
-1. **BullMQ Persistence**: Delayed and pending jobs reside in Redis. Worker process restarts do not clear job states.
-2. **Heartbeat Monitoring**: Workers register their status and concurrency in the `WorkerState` PostgreSQL table every 15 seconds.
-3. **Database Consistency**: PostgreSQL acts as the single source of truth. If a worker crashes mid-execution, BullMQ's automatic visibility timeout will re-deliver the job. The idempotent conditional lock will evaluate if SMTP was executed or if the job should be safely retried.
+- When a worker encounters an over-limit counter (`currentCount > maxPerHour`), it reverts DB status to `PENDING` and enqueues a delayed job in BullMQ scheduled for $\text{DelayMs}$ into the future, preserving order without dropping jobs.

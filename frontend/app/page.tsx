@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import Link from 'next/link';
 import { formatDate } from '@/lib/utils';
-import { Activity, Clock, Zap, CheckCircle2, ArrowRight, RefreshCw, Layers } from 'lucide-react';
+import { Activity, Clock, Zap, CheckCircle2, RefreshCw, Layers, ShieldCheck, AlertCircle } from 'lucide-react';
 
 export default function OperationsOverviewPage() {
   const { data: metricsData } = useQuery({
@@ -23,30 +23,69 @@ export default function OperationsOverviewPage() {
   const metrics = metricsData?.data;
   const campaigns = campaignsData?.data || [];
 
+  const rateLimit = metrics?.rateLimit || {
+    maxPerHour: 500,
+    used: 0,
+    remaining: 500,
+    resetInMinutes: 60,
+  };
+
   return (
     <div className="space-y-8 font-sans">
-      {/* Top Serif Title & Header */}
+      {/* Top Title Bar */}
       <div className="flex items-baseline justify-between border-b border-[#DDD8D1] pb-4">
         <div>
           <h1 className="text-2xl font-serif font-semibold text-[#1F1F1F] tracking-tight">
             MailOrchestrator Operations
           </h1>
           <p className="text-xs text-[#6B6B6B] mt-1 font-sans">
-            Internal queue execution console, Redis sliding-window rate limiters, and BullMQ worker telemetry.
+            Internal queue execution console, exposed Redis rate limiter capacity, and worker pipeline state.
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs font-mono text-[#1B7F4B] bg-[#FFFFFF] px-3 py-1 rounded border border-[#DDD8D1]">
           <RefreshCw className="w-3 h-3 animate-spin text-[#1B7F4B]" />
-          <span>Queue Live Poll</span>
+          <span>Live Queue Metrics</span>
         </div>
       </div>
 
-      {/* Editorial Pipeline Flow Diagram */}
+      {/* Exposed Rate Limit Capacity Panel */}
+      <div className="bg-[#FFFFFF] border border-[#DDD8D1] rounded p-5 space-y-3 shadow-sm">
+        <div className="flex items-center justify-between border-b border-[#DDD8D1] pb-3">
+          <span className="editorial-label flex items-center gap-2">
+            <ShieldCheck className="w-3.5 h-3.5 text-[#A34A22]" />
+            Sender Hourly Rate Limit Window (Redis Counter)
+          </span>
+          <span className="text-xs font-mono text-[#6B6B6B]">
+            Next Reset Window: <strong className="text-[#1F1F1F]">{rateLimit.resetInMinutes} minutes</strong>
+          </span>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 font-mono text-xs">
+          <div className="p-3 bg-[#FAF8F5] border border-[#DDD8D1] rounded">
+            <span className="text-[10px] text-[#6B6B6B] block uppercase font-bold">Configured Limit</span>
+            <span className="text-xl font-bold font-serif text-[#1F1F1F]">{rateLimit.maxPerHour} / hr</span>
+          </div>
+          <div className="p-3 bg-[#FAF8F5] border border-[#DDD8D1] rounded">
+            <span className="text-[10px] text-[#6B6B6B] block uppercase font-bold">Used in Current Window</span>
+            <span className="text-xl font-bold font-serif text-[#A46A00]">{rateLimit.used}</span>
+          </div>
+          <div className="p-3 bg-[#FAF8F5] border border-[#DDD8D1] rounded">
+            <span className="text-[10px] text-[#6B6B6B] block uppercase font-bold">Remaining Capacity</span>
+            <span className="text-xl font-bold font-serif text-[#1B7F4B]">{rateLimit.remaining}</span>
+          </div>
+          <div className="p-3 bg-[#FAF8F5] border border-[#DDD8D1] rounded">
+            <span className="text-[10px] text-[#6B6B6B] block uppercase font-bold">Rescheduled / Delayed</span>
+            <span className="text-xl font-bold font-serif text-[#A34A22]">{metrics?.queue.delayed ?? 0}</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Interactive Queue Stage Visualizer with Checkboxes */}
       <div className="bg-[#FFFFFF] border border-[#DDD8D1] rounded p-6 space-y-4 shadow-sm">
         <div className="flex items-center justify-between border-b border-[#DDD8D1] pb-3">
           <span className="editorial-label flex items-center gap-2">
             <Layers className="w-3.5 h-3.5 text-[#A34A22]" />
-            Execution Pipeline Architecture
+            Queue Stage Progress Flow
           </span>
           <span className="text-xs font-mono text-[#6B6B6B]">
             BullMQ Queue: <strong className="text-[#1F1F1F]">email-dispatch-queue</strong>
@@ -54,62 +93,57 @@ export default function OperationsOverviewPage() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3 font-mono text-xs">
-          {/* Stage 1 */}
           <div className="p-3 bg-[#FAF8F5] border border-[#DDD8D1] rounded space-y-1">
             <div className="flex items-center justify-between text-[10px] text-[#6B6B6B]">
-              <span>[1] Ingestion</span>
-              <span className="text-[#1B7F4B] font-bold">READY</span>
+              <span>[1] CSV Uploaded</span>
+              <span className="text-[#1B7F4B] font-bold">✓</span>
             </div>
-            <div className="text-[#1F1F1F] font-bold text-base font-serif">
-              {metrics ? metrics.telemetry.totalRecipients : 0}
+            <div className="text-[#1F1F1F] font-bold text-sm font-serif">
+              {metrics ? metrics.telemetry.totalRecipients : 0} Leads
             </div>
-            <div className="text-[10px] text-[#6B6B6B]">CSV & REST API</div>
+            <div className="text-[10px] text-[#6B6B6B]">Ingested & Parsed</div>
           </div>
 
-          {/* Stage 2 */}
           <div className="p-3 bg-[#FAF8F5] border border-[#DDD8D1] rounded space-y-1">
             <div className="flex items-center justify-between text-[10px] text-[#6B6B6B]">
-              <span>[2] Queue</span>
-              <span className="text-[#A46A00] font-bold">WAITING</span>
+              <span>[2] Jobs Enqueued</span>
+              <span className="text-[#1B7F4B] font-bold">✓</span>
             </div>
-            <div className="text-[#1F1F1F] font-bold text-base font-serif">
-              {metrics ? metrics.queue.waiting : 0}
+            <div className="text-[#1F1F1F] font-bold text-sm font-serif">
+              {metrics ? metrics.queue.waiting : 0} Waiting
             </div>
-            <div className="text-[10px] text-[#6B6B6B]">Redis delayed jobs</div>
+            <div className="text-[10px] text-[#6B6B6B]">BullMQ Redis queue</div>
           </div>
 
-          {/* Stage 3 */}
           <div className="p-3 bg-[#FAF8F5] border border-[#DDD8D1] rounded space-y-1">
             <div className="flex items-center justify-between text-[10px] text-[#6B6B6B]">
-              <span>[3] Rate Limit</span>
-              <span className="text-[#A34A22] font-bold">SLIDING</span>
+              <span>[3] Rate Limiter</span>
+              <span className="text-[#A46A00] font-bold">ACTIVE</span>
             </div>
-            <div className="text-[#1F1F1F] font-bold text-base font-serif">
-              {metrics ? metrics.queue.delayed : 0}
+            <div className="text-[#1F1F1F] font-bold text-sm font-serif">
+              {metrics ? metrics.queue.delayed : 0} Delayed
             </div>
             <div className="text-[10px] text-[#6B6B6B]">Hourly INCR check</div>
           </div>
 
-          {/* Stage 4 */}
           <div className="p-3 bg-[#FAF8F5] border border-[#DDD8D1] rounded space-y-1">
             <div className="flex items-center justify-between text-[10px] text-[#6B6B6B]">
-              <span>[4] Workers</span>
-              <span className="text-[#A34A22] font-bold">ACTIVE</span>
+              <span>[4] Worker Cluster</span>
+              <span className="text-[#A34A22] font-bold">RUNNING</span>
             </div>
-            <div className="text-[#1F1F1F] font-bold text-base font-serif">
+            <div className="text-[#1F1F1F] font-bold text-sm font-serif">
               {metrics ? metrics.telemetry.activeWorkers : 0} Nodes
             </div>
             <div className="text-[10px] text-[#6B6B6B]">Idempotency locked</div>
           </div>
 
-          {/* Stage 5 */}
           <div className="p-3 bg-[#FAF8F5] border border-[#DDD8D1] rounded space-y-1">
             <div className="flex items-center justify-between text-[10px] text-[#6B6B6B]">
-              <span>[5] Delivery</span>
+              <span>[5] Delivered</span>
               <span className="text-[#1B7F4B] font-bold">DELIVERED</span>
             </div>
-            <div className="text-[#1F1F1F] font-bold text-base font-serif">
-              {metrics ? metrics.telemetry.sentToday : 0}
+            <div className="text-[#1F1F1F] font-bold text-sm font-serif">
+              {metrics ? metrics.telemetry.sentToday : 0} Sent
             </div>
             <div className="text-[10px] text-[#6B6B6B]">Ethereal / SMTP</div>
           </div>
@@ -173,14 +207,14 @@ export default function OperationsOverviewPage() {
               <span className="text-[#1B7F4B]">●</span>
               <div>
                 <span className="text-[#1F1F1F] block font-semibold">Worker Node Active</span>
-                <span className="text-[#6B6B6B] text-[10px]">Heartbeat registered • 15s ago</span>
+                <span className="text-[#6B6B6B] text-[10px]">Worker Health Monitoring active</span>
               </div>
             </div>
 
             <div className="flex items-start gap-2">
               <span className="text-[#A34A22]">●</span>
               <div>
-                <span className="text-[#1F1F1F] block font-semibold">Idempotency Lock Acquired</span>
+                <span className="text-[#1F1F1F] block font-semibold">Database Idempotency Locked</span>
                 <span className="text-[#6B6B6B] text-[10px]">PENDING → PROCESSING lock</span>
               </div>
             </div>
@@ -188,8 +222,8 @@ export default function OperationsOverviewPage() {
             <div className="flex items-start gap-2">
               <span className="text-[#A46A00]">●</span>
               <div>
-                <span className="text-[#1F1F1F] block font-semibold">Redis Hourly Limit Check</span>
-                <span className="text-[#6B6B6B] text-[10px]">Atomic INCR check passed</span>
+                <span className="text-[#1F1F1F] block font-semibold">Redis Rate Check Passed</span>
+                <span className="text-[#6B6B6B] text-[10px]">INCR capacity check</span>
               </div>
             </div>
 
@@ -197,7 +231,7 @@ export default function OperationsOverviewPage() {
               <span className="text-[#1B7F4B]">●</span>
               <div>
                 <span className="text-[#1F1F1F] block font-semibold">Delivered to Ethereal</span>
-                <span className="text-[#6B6B6B] text-[10px]">SMTP ACK response 250</span>
+                <span className="text-[#6B6B6B] text-[10px]">SMTP ACK 250 OK</span>
               </div>
             </div>
           </div>
