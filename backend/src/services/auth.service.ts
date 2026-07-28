@@ -19,21 +19,46 @@ export class AuthService {
   }
 
   public async handleGoogleAuth(googleData: {
-    googleId: string;
-    email: string;
-    name: string;
+    googleId?: string;
+    email?: string;
+    name?: string;
     avatarUrl?: string;
+    idToken?: string;
   }): Promise<{ user: User; token: string }> {
-    let user = await this.userRepo.findByGoogleId(googleData.googleId);
+    let email = googleData.email;
+    let name = googleData.name;
+    let avatarUrl = googleData.avatarUrl;
+    let googleId = googleData.googleId;
+
+    if (googleData.idToken && !email) {
+      try {
+        const decoded: any = jwt.decode(googleData.idToken);
+        if (decoded && decoded.email) {
+          email = decoded.email;
+          name = name || decoded.name || email?.split('@')[0];
+          avatarUrl = avatarUrl || decoded.picture;
+          googleId = googleId || decoded.sub;
+        }
+      } catch (e) {
+        // Continue with provided fields
+      }
+    }
+
+    const finalEmail = email || `google_user_${Date.now()}@reachinbox.ai`;
+    const finalName = name || 'Google User';
+    const finalGoogleId = googleId || `gid_${Date.now()}`;
+    const finalAvatar = avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(finalName)}`;
+
+    let user = await this.userRepo.findByGoogleId(finalGoogleId);
 
     if (!user) {
-      user = await this.userRepo.findByEmail(googleData.email);
+      user = await this.userRepo.findByEmail(finalEmail);
       if (!user) {
         user = await this.userRepo.create({
-          email: googleData.email,
-          name: googleData.name,
-          avatarUrl: googleData.avatarUrl,
-          googleId: googleData.googleId,
+          email: finalEmail,
+          name: finalName,
+          avatarUrl: finalAvatar,
+          googleId: finalGoogleId,
         });
       }
     }

@@ -2,18 +2,20 @@ import { createApp } from './app';
 import { env } from './config/env';
 import { logger } from './logger/logger';
 import { UserRepository } from './repositories/user.repository';
+import { recoveryService } from './services/recovery.service';
 import { EmailWorker } from './workers/emailWorker';
 import { WorkerHealth } from './workers/workerHealth';
 
 async function startServer() {
   const app = createApp();
 
-  // Ensure default system user exists safely
+  // Ensure default system user exists safely and run boot recovery for pending jobs
   try {
     const userRepo = new UserRepository();
     await userRepo.ensureDefaultUser();
+    await recoveryService.recoverPendingJobs();
   } catch (err) {
-    logger.warn({ err }, '[Server] System user initialization deferred until DB connection is established');
+    logger.warn({ err }, '[Server] System user initialization or job recovery deferred until DB connection is established');
   }
 
   // Optionally initialize in-process worker if running in single-node dev mode

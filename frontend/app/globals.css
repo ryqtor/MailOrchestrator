@@ -12,7 +12,12 @@
     -webkit-font-smoothing: antialiased;
   }
 
-  h1, h2, h3, h4, h5, h6 {
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
     font-family: 'IBM Plex Serif', Georgia, serif;
   }
 }
@@ -22,13 +27,16 @@
   width: 5px;
   height: 5px;
 }
+
 ::-webkit-scrollbar-track {
   background: #FAF8F5;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #DDD8D1;
   border-radius: 4px;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #A34A22;
 }
