@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '@/lib/api';
 import { useRouter } from 'next/navigation';
@@ -25,6 +25,24 @@ export default function CampaignBuilderPage() {
   );
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [selectedSampleIndex, setSelectedSampleIndex] = useState<number>(0);
+
+  const bodyRef = useRef<HTMLTextAreaElement>(null);
+  const csvRef = useRef<HTMLTextAreaElement>(null);
+
+  // Dynamic Auto-Resizing Textareas
+  useEffect(() => {
+    if (bodyRef.current) {
+      bodyRef.current.style.height = 'auto';
+      bodyRef.current.style.height = `${Math.max(120, bodyRef.current.scrollHeight)}px`;
+    }
+  }, [bodyTemplate]);
+
+  useEffect(() => {
+    if (csvRef.current) {
+      csvRef.current.style.height = 'auto';
+      csvRef.current.style.height = `${Math.max(100, csvRef.current.scrollHeight)}px`;
+    }
+  }, [manualCSVText]);
 
   // Client-side CSV parsing for live contact count & invalid row detection
   const parseClientCSV = () => {
@@ -149,14 +167,14 @@ export default function CampaignBuilderPage() {
       </div>
 
       {errorMsg && (
-        <div className="p-3 rounded bg-[#FAF8F5] border border-[#B42318] text-[#B42318] text-xs flex items-center gap-2">
+        <div className="p-3 rounded-lg bg-[#FAF8F5] border border-[#B42318] text-[#B42318] text-xs flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           <span>{errorMsg}</span>
         </div>
       )}
 
       {/* Document Composition Sections */}
-      <div className="space-y-6 bg-[#FFFFFF] border border-[#DDD8D1] rounded p-6 shadow-sm">
+      <div className="space-y-6 bg-[#FFFFFF] border border-[#DDD8D1] rounded-xl p-6 shadow-sm">
         {/* Campaign Name & Subject */}
         <div className="space-y-4">
           <div>
@@ -166,7 +184,7 @@ export default function CampaignBuilderPage() {
               placeholder="e.g. Q3 High-Intent Outreach"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              className="w-full px-3 py-2 rounded bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs font-serif focus:outline-none focus:border-[#A34A22]"
+              className="w-full px-3.5 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs font-serif focus:outline-none focus:border-[#A34A22]"
             />
           </div>
 
@@ -177,7 +195,7 @@ export default function CampaignBuilderPage() {
               placeholder="Transforming cold email outreach for {{name}}"
               value={subject}
               onChange={(e) => setSubject(e.target.value)}
-              className="w-full px-3 py-2 rounded bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs focus:outline-none focus:border-[#A34A22]"
+              className="w-full px-3.5 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs focus:outline-none focus:border-[#A34A22]"
             />
           </div>
         </div>
@@ -190,14 +208,14 @@ export default function CampaignBuilderPage() {
               Recipient Leads Source
             </span>
             <div className="flex items-center gap-2 font-mono text-xs">
-              <span className="px-2 py-0.5 rounded bg-[#FAF8F5] text-[#1B7F4B] border border-[#DDD8D1] font-bold">
+              <span className="px-2.5 py-0.5 rounded-full bg-[#FAF8F5] text-[#1B7F4B] border border-[#DDD8D1] font-bold shadow-2xs">
                 {parsedContactCount} valid contacts
               </span>
               {invalidRows.length > 0 && (
                 <button
                   type="button"
                   onClick={handleDownloadInvalidRows}
-                  className="flex items-center gap-1 px-2.5 py-0.5 rounded bg-[#FAF8F5] text-[#B42318] border border-[#DDD8D1] hover:bg-[#DDD8D1]/40 transition-colors"
+                  className="flex items-center gap-1 px-2.5 py-0.5 rounded-lg bg-[#FAF8F5] text-[#B42318] border border-[#DDD8D1] hover:bg-[#DDD8D1]/40 transition-colors"
                 >
                   <Download className="w-3 h-3" />
                   <span>Download {invalidRows.length} Invalid Rows (.csv)</span>
@@ -206,9 +224,10 @@ export default function CampaignBuilderPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="border border-dashed border-[#DDD8D1] hover:border-[#A34A22] rounded p-4 text-center bg-[#FAF8F5]">
-              <Upload className="w-5 h-5 text-[#6B6B6B] mx-auto mb-2" />
+          <div className="flex flex-col gap-3">
+            {/* Option 1: File Upload Box */}
+            <div className="border border-dashed border-[#DDD8D1] hover:border-[#A34A22] rounded-lg p-4 text-center bg-[#FAF8F5] transition-colors">
+              <Upload className="w-5 h-5 text-[#A34A22] mx-auto mb-1.5" />
               <input
                 type="file"
                 accept=".csv"
@@ -218,19 +237,23 @@ export default function CampaignBuilderPage() {
                 className="hidden"
                 id="csv-file-input"
               />
-              <label htmlFor="csv-file-input" className="cursor-pointer text-xs font-mono text-[#A34A22] hover:underline block font-semibold">
+              <label htmlFor="csv-file-input" className="cursor-pointer text-xs font-mono text-[#A34A22] hover:underline block font-bold">
                 {csvFile ? `Selected: ${csvFile.name}` : 'Upload Recipient CSV File'}
               </label>
-              <p className="text-[10px] text-[#6B6B6B] mt-1 font-mono">Requires "email" column header.</p>
+              <p className="text-[11px] text-[#6B6B6B] mt-1 font-mono">Requires "email" column header.</p>
             </div>
 
+            {/* Option 2: Manual Email List / CSV Box - Full Width Stacked Directly After */}
             <div>
+              <label className="block text-[11px] font-mono text-[#6B6B6B] mb-1 font-semibold">
+                Or Paste Recipient Email List / CSV Data:
+              </label>
               <textarea
-                rows={4}
+                ref={csvRef}
                 value={manualCSVText}
                 onChange={(e) => setManualCSVText(e.target.value)}
-                className="w-full px-3 py-2 rounded bg-[#FAF8F5] border border-[#DDD8D1] text-xs font-mono text-[#1F1F1F] focus:outline-none focus:border-[#A34A22]"
-                placeholder="Paste CSV rows here..."
+                className="w-full px-3.5 py-2.5 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-xs font-mono text-[#1F1F1F] focus:outline-none focus:border-[#A34A22] transition-all resize-none overflow-hidden"
+                placeholder="email,name,company&#10;alex@example.com,Alex,Acme Inc"
               />
             </div>
           </div>
@@ -240,13 +263,13 @@ export default function CampaignBuilderPage() {
         <div className="border-t border-[#DDD8D1] pt-5 space-y-4">
           <div className="flex items-center justify-between">
             <span className="editorial-label">Template Body</span>
-            <div className="flex gap-1">
+            <div className="flex gap-1.5">
               {['{{name}}', '{{company}}', '{{email}}'].map((tag) => (
                 <button
                   key={tag}
                   type="button"
                   onClick={() => setBodyTemplate((prev) => prev + ` ${tag}`)}
-                  className="px-2 py-0.5 rounded bg-[#FAF8F5] text-[10px] text-[#A34A22] border border-[#DDD8D1] font-mono hover:bg-[#DDD8D1]"
+                  className="px-2 py-0.5 rounded bg-[#FAF8F5] text-[10px] text-[#A34A22] border border-[#DDD8D1] font-mono hover:bg-[#DDD8D1] transition-colors"
                 >
                   {tag}
                 </button>
@@ -254,14 +277,15 @@ export default function CampaignBuilderPage() {
             </div>
           </div>
           <textarea
-            rows={4}
+            ref={bodyRef}
             value={bodyTemplate}
             onChange={(e) => setBodyTemplate(e.target.value)}
-            className="w-full px-3 py-2 rounded bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] font-mono text-xs focus:outline-none focus:border-[#A34A22]"
+            className="w-full px-3.5 py-2.5 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] font-mono text-xs focus:outline-none focus:border-[#A34A22] transition-all resize-none overflow-hidden leading-relaxed"
+            placeholder="Write your email body template here..."
           />
 
           {/* Interactive Template Preview Box */}
-          <div className="p-4 bg-[#FAF8F5] border border-[#DDD8D1] rounded space-y-2 font-mono text-xs">
+          <div className="p-4 bg-[#FAF8F5] border border-[#DDD8D1] rounded-lg space-y-2 font-mono text-xs">
             <div className="flex items-center justify-between border-b border-[#DDD8D1] pb-2">
               <span className="editorial-label flex items-center gap-1.5">
                 <Eye className="w-3.5 h-3.5 text-[#A34A22]" />
@@ -290,7 +314,7 @@ export default function CampaignBuilderPage() {
                 <span className="text-[#6B6B6B]">Subject:</span>{' '}
                 <strong className="text-[#1F1F1F]">{renderTemplate(subject || 'Campaign Subject')}</strong>
               </div>
-              <div className="pt-2 text-[#1F1F1F] whitespace-pre-wrap font-sans text-xs bg-[#FFFFFF] p-3 border border-[#DDD8D1] rounded">
+              <div className="pt-2 text-[#1F1F1F] whitespace-pre-wrap font-sans text-xs bg-[#FFFFFF] p-3 border border-[#DDD8D1] rounded-lg">
                 {renderTemplate(bodyTemplate)}
               </div>
             </div>
@@ -308,7 +332,7 @@ export default function CampaignBuilderPage() {
                 type="datetime-local"
                 value={scheduledAt}
                 onChange={(e) => setScheduledAt(e.target.value)}
-                className="w-full px-3 py-2 rounded bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs font-mono focus:outline-none focus:border-[#A34A22]"
+                className="w-full px-3 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs font-mono focus:outline-none focus:border-[#A34A22]"
               />
             </div>
 
@@ -319,7 +343,7 @@ export default function CampaignBuilderPage() {
                 min="0"
                 value={minDelaySeconds}
                 onChange={(e) => setMinDelaySeconds(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs font-mono focus:outline-none focus:border-[#A34A22]"
+                className="w-full px-3 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs font-mono focus:outline-none focus:border-[#A34A22]"
               />
             </div>
 
@@ -330,12 +354,12 @@ export default function CampaignBuilderPage() {
                 min="1"
                 value={maxPerHour}
                 onChange={(e) => setMaxPerHour(Number(e.target.value))}
-                className="w-full px-3 py-2 rounded bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs font-mono focus:outline-none focus:border-[#A34A22]"
+                className="w-full px-3 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs font-mono focus:outline-none focus:border-[#A34A22]"
               />
             </div>
           </div>
 
-          <div className="p-3 rounded bg-[#FAF8F5] border border-[#DDD8D1] flex items-center justify-between text-xs font-mono">
+          <div className="p-3 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] flex items-center justify-between text-xs font-mono">
             <div className="flex items-center gap-2 text-[#6B6B6B]">
               <Clock className="w-4 h-4 text-[#A34A22]" />
               <span>Estimated Execution Duration:</span>
@@ -351,7 +375,7 @@ export default function CampaignBuilderPage() {
           <button
             disabled={!title || !subject || scheduleMutation.isPending}
             onClick={() => scheduleMutation.mutate()}
-            className="flex items-center gap-2 px-5 py-2 rounded bg-[#A34A22] hover:bg-[#8c3d1b] text-white font-mono text-xs font-bold disabled:opacity-50 transition-colors shadow-sm"
+            className="flex items-center gap-2 px-5 py-2.5 rounded-lg bg-[#A34A22] hover:bg-[#8c3d1b] text-white font-mono text-xs font-bold disabled:opacity-50 transition-all shadow-sm"
           >
             {scheduleMutation.isPending ? (
               <span>Enqueuing Jobs...</span>
