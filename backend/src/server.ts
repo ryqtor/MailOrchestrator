@@ -18,16 +18,11 @@ async function startServer() {
     logger.warn({ err }, '[Server] System user initialization or job recovery deferred until DB connection is established');
   }
 
-  // Optionally initialize in-process worker if running in single-node dev mode
-  let inlineWorker: EmailWorker | null = null;
-  let inlineHealth: WorkerHealth | null = null;
-
-  if (env.NODE_ENV === 'development') {
-    logger.info('[Server] Starting inline worker process for local development...');
-    inlineWorker = new EmailWorker();
-    inlineHealth = new WorkerHealth();
-    await inlineHealth.startHeartbeat();
-  }
+  // Initialize worker process to process BullMQ jobs in all environments (including Railway production)
+  logger.info(`[Server] Starting EmailWorker process in ${env.NODE_ENV} mode...`);
+  const inlineWorker = new EmailWorker();
+  const inlineHealth = new WorkerHealth();
+  await inlineHealth.startHeartbeat();
 
   const server = app.listen(env.PORT, () => {
     logger.info(`[Server] MailOrchestrator API listening on port ${env.PORT} (${env.NODE_ENV})`);
