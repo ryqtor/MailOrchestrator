@@ -70,13 +70,36 @@ export class EmailService {
 
       // Check standard SMTP or Gmail App Password mode
       if (smtpConfig.host && smtpConfig.user && smtpConfig.pass) {
+        // Strip spaces from Gmail App Password if user pasted with spaces (e.g. xxxx xxxx xxxx xxxx)
+        const cleanPass = smtpConfig.pass.replace(/\s+/g, '');
+        const isGmail = smtpConfig.host.toLowerCase().includes('gmail');
+
+        // For Gmail: use Nodemailer's built-in 'service' shorthand which auto-handles
+        // port selection, TLS, and connection pooling — avoids port 587 timeout on cloud providers
+        if (isGmail) {
+          logger.info(
+            { user: smtpConfig.user },
+            '[EmailService] Initializing Gmail Service Transporter (auto port/TLS)'
+          );
+
+          const transporter = nodemailer.createTransport({
+            service: 'gmail',
+            auth: {
+              user: smtpConfig.user,
+              pass: cleanPass,
+            },
+            connectionTimeout: 30000,
+            greetingTimeout: 30000,
+            socketTimeout: 30000,
+          });
+          return Promise.resolve(transporter);
+        }
+
+        // For non-Gmail SMTP: use explicit host/port config
         const port = smtpConfig.port ? Number(smtpConfig.port) : 587;
         const secure = smtpConfig.secure !== undefined && smtpConfig.secure !== null 
           ? smtpConfig.secure 
           : port === 465;
-
-        // Strip spaces from Gmail App Password if user pasted with spaces (e.g. xxxx xxxx xxxx xxxx)
-        const cleanPass = smtpConfig.pass.replace(/\s+/g, '');
 
         logger.info(
           { host: smtpConfig.host, port, user: smtpConfig.user, secure },
@@ -95,7 +118,9 @@ export class EmailService {
           tls: {
             rejectUnauthorized: false,
           },
-          connectionTimeout: 10000,
+          connectionTimeout: 30000,
+          greetingTimeout: 30000,
+          socketTimeout: 30000,
         };
 
         const transporter = nodemailer.createTransport(transporterOptions);
