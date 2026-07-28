@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { getStoredUser, clearStoredUser, UserProfile, defaultUser } from '@/lib/auth';
 import { LogOut, LogIn, Mail, Settings } from 'lucide-react';
 import { GoogleLoginModal } from '../auth/GoogleLoginModal';
+import { SignInButton, SignUpButton, UserButton, useUser } from '@clerk/nextjs';
 
 export function Header() {
   const pathname = usePathname();
@@ -14,10 +15,24 @@ export function Header() {
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [isAuthModalOpen, setIsAuthModalOpen] = useState(false);
 
+  // Clerk hook
+  const { user: clerkUser, isSignedIn: isClerkSignedIn } = useUser();
+
   useEffect(() => {
-    const u = getStoredUser();
-    setUser(u);
-  }, []);
+    if (isClerkSignedIn && clerkUser) {
+      const u: UserProfile = {
+        id: clerkUser.id,
+        name: clerkUser.fullName || clerkUser.primaryEmailAddress?.emailAddress?.split('@')[0] || 'Clerk User',
+        email: clerkUser.primaryEmailAddress?.emailAddress || 'user@clerk.app',
+        avatarUrl: clerkUser.imageUrl || 'https://api.dicebear.com/7.x/avataaars/svg?seed=ClerkUser',
+      };
+      setUser(u);
+      setIsLoggedIn(true);
+    } else {
+      const u = getStoredUser();
+      setUser(u);
+    }
+  }, [isClerkSignedIn, clerkUser]);
 
   const handleLogout = () => {
     clearStoredUser();
@@ -81,7 +96,11 @@ export function Header() {
 
           {/* FAR RIGHT: User Profile Badge & Quick Settings / Logout Links */}
           <div className="flex items-center gap-3 shrink-0">
-            {isLoggedIn ? (
+            {isClerkSignedIn ? (
+              <div className="flex items-center gap-3">
+                <UserButton />
+              </div>
+            ) : isLoggedIn ? (
               <div className="flex items-center gap-2.5 bg-[#FFFFFF] border border-[#DDD8D1] rounded-full pl-2 pr-3 py-1 shadow-2xs hover:border-[#A34A22]/30 transition-colors">
                 <div className="relative flex items-center justify-center">
                   <img
@@ -98,29 +117,39 @@ export function Header() {
                 <Link
                   href="/settings"
                   title="Sender Settings"
-                  className="p-1.5 rounded-full text-[#6B6B6B] hover:text-[#A34A22] hover:bg-[#A34A22]/10 transition-colors ml-0.5"
+                  className="p-1 text-[#6B6B6B] hover:text-[#A34A22] rounded-full hover:bg-[#FAF8F5] transition-colors ml-1"
                 >
                   <Settings className="w-3.5 h-3.5" />
                 </Link>
                 <button
                   onClick={handleLogout}
-                  title="Logout"
-                  className="p-1.5 rounded-full text-[#6B6B6B] hover:text-[#B42318] hover:bg-[#B42318]/10 transition-colors"
+                  title="Sign Out"
+                  className="p-1 text-[#6B6B6B] hover:text-[#A34A22] rounded-full hover:bg-[#FAF8F5] transition-colors"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>
               </div>
             ) : (
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#A34A22] hover:bg-[#8c3d1b] text-white text-xs font-semibold whitespace-nowrap transition-colors shadow-2xs"
-              >
-                <LogIn className="w-3.5 h-3.5" />
-                <span>Google OAuth Login</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <SignInButton mode="modal">
+                  <button
+                    type="button"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#FAF8F5] hover:bg-[#DDD8D1]/40 border border-[#DDD8D1] text-[#1F1F1F] text-xs font-semibold font-mono transition-colors"
+                  >
+                    <span>Sign In</span>
+                  </button>
+                </SignInButton>
+                <button
+                  type="button"
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-[#A34A22] hover:bg-[#8c3d1b] text-white text-xs font-semibold font-mono transition-colors shadow-2xs"
+                >
+                  <LogIn className="w-3.5 h-3.5" />
+                  <span>Google OAuth</span>
+                </button>
+              </div>
             )}
           </div>
-
         </div>
       </header>
 
