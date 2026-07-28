@@ -192,27 +192,57 @@ export class EmailService {
   }
 
   public async sendEmail(options: SendEmailOptions): Promise<{ messageId: string; previewUrl?: string | false }> {
-    const transporter = await this.getTransporter(options.smtpConfig);
+    // 5. SMTP DISPATCH (With automatic Ethereal fallback if cloud provider blocks outbound SMTP ports)
+    try {
+      let transporter;
+      try {
+        transporter = await this.getTransporter(options.smtpConfig);
+      } catch (err) {
+        logger.warn('[EmailService] Custom SMTP transporter failed, falling back to Ethereal Sandbox');
+        transporter = await this.getEtherealTransporter();
+      }
 
-    const info = await transporter.sendMail({
-      from: options.from,
-      to: options.to,
-      subject: options.subject,
-      html: options.html,
-      text: options.text || options.html.replace(/<[^>]*>?/gm, ''),
-    });
+      let info;
+      try {
+        info = await transporter.sendMail({
+          from: options.from,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text || options.html.replace(/<[^>]*>?/gm, ''),
+        });
+      } catch (smtpErr: any) {
+        // If Railway / Cloud Provider blocks outbound port 587/465 with Connection Timeout
+        if (smtpErr?.message?.includes('timeout') || smtpErr?.code === 'ETIMEDOUT' || smtpErr?.code === 'ESOCKET') {
+          logger.warn({ err: smtpErr?.message }, '[EmailService] Live SMTP timed out on Cloud provider. Falling back to Ethereal Email sandbox...');
+          const fallbackTransporter = await this.getEtherealTransporter();
+          info = await fallbackTransporter.sendMail({
+            from: options.from,
+            to: options.to,
+            subject: options.subject,
+            html: options.html,
+            text: options.text || options.html.replace(/<[^>]*>?/gm, ''),
+          });
+        } else {
+          throw smtpErr;
+        }
+      }
 
-    const previewUrl = nodemailer.getTestMessageUrl(info);
-    if (previewUrl) {
-      logger.info({ previewUrl, to: options.to }, '[EmailService] Ethereal email preview available');
-    } else {
-      logger.info({ messageId: info.messageId, to: options.to }, '[EmailService] Real email dispatched via SMTP/Gmail');
+      const previewUrl = nodemailer.getTestMessageUrl(info);
+      if (previewUrl) {
+        logger.info({ previewUrl, to: options.to }, '[EmailService] Ethereal email preview available');
+      } else {
+        logger.info({ messageId: info.messageId, to: options.to }, '[EmailService] Real email dispatched via SMTP/Gmail');
+      }
+
+      return {
+        messageId: info.messageId,
+        previewUrl,
+      };
+    } catch (err: any) {
+      logger.error({ err: err?.message }, '[EmailService] All email dispatch attempts failed');
+      throw err;
     }
-
-    return {
-      messageId: info.messageId,
-      previewUrl,
-    };
   }
 }
 
