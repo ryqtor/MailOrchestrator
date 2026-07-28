@@ -70,14 +70,16 @@ export class EmailService {
 
       // Check standard SMTP or Gmail App Password mode
       if (smtpConfig.host && smtpConfig.user && smtpConfig.pass) {
-        const port = smtpConfig.port || 587;
-        const isGmail = smtpConfig.host.toLowerCase().includes('gmail.com');
+        const port = smtpConfig.port ? Number(smtpConfig.port) : 587;
         const secure = smtpConfig.secure !== undefined && smtpConfig.secure !== null 
           ? smtpConfig.secure 
           : port === 465;
 
+        // Strip spaces from Gmail App Password if user pasted with spaces (e.g. xxxx xxxx xxxx xxxx)
+        const cleanPass = smtpConfig.pass.replace(/\s+/g, '');
+
         logger.info(
-          { host: smtpConfig.host, port, user: smtpConfig.user, isGmail, secure },
+          { host: smtpConfig.host, port, user: smtpConfig.user, secure },
           '[EmailService] Initializing Real SMTP Transporter'
         );
 
@@ -87,17 +89,14 @@ export class EmailService {
           secure,
           auth: {
             user: smtpConfig.user,
-            pass: smtpConfig.pass,
+            pass: cleanPass,
           },
-          // Enhance connection handling for Gmail / TLS
+          requireTLS: port === 587,
           tls: {
-            rejectUnauthorized: false, // Prevents self-signed cert issues or local proxy errors
+            rejectUnauthorized: false,
           },
+          connectionTimeout: 10000,
         };
-
-        if (isGmail) {
-          transporterOptions.service = 'gmail';
-        }
 
         const transporter = nodemailer.createTransport(transporterOptions);
         return Promise.resolve(transporter);

@@ -72,7 +72,7 @@ export default function SettingsPage() {
   const handleApplyGmailPreset = () => {
     setIsEthereal(false);
     setSmtpHost('smtp.gmail.com');
-    setSmtpPort(465);
+    setSmtpPort(587);
     if (!name) setName('Gmail Real Sender');
     if (!fromEmail && smtpUser) setFromEmail(smtpUser);
     setTestFeedback(null);
