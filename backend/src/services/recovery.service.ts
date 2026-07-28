@@ -15,21 +15,23 @@ export class RecoveryService {
     let recoveredCount = 0;
 
     try {
-      // 1. Reset any stale PROCESSING emails back to PENDING (if server crashed during worker handling)
-      const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+      // 1. Reset any stale PROCESSING or FAILED emails back to PENDING (so failed cloud timeouts re-process cleanly)
       const staleProcessing = await prisma.scheduledEmail.updateMany({
         where: {
-          status: ScheduledEmailStatus.PROCESSING,
-          updatedAt: { lt: oneMinuteAgo },
+          OR: [
+            { status: ScheduledEmailStatus.PROCESSING },
+            { status: ScheduledEmailStatus.FAILED },
+          ],
         },
         data: {
           status: ScheduledEmailStatus.PENDING,
+          attempts: 0,
         },
       });
       resetCount = staleProcessing.count;
 
       if (resetCount > 0) {
-        logger.info({ resetCount }, '[RecoveryService] Reset stale PROCESSING jobs back to PENDING');
+        logger.info({ resetCount }, '[RecoveryService] Reset stale/failed jobs back to PENDING for re-dispatch');
       }
 
       // 2. Find all PENDING scheduled emails
