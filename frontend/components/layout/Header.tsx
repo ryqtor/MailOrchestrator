@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { getStoredUser, clearStoredUser, UserProfile, defaultUser } from '@/lib/auth';
-import { LogOut, LogIn, Mail } from 'lucide-react';
+import { LogOut, LogIn, Mail, Settings } from 'lucide-react';
 import { GoogleLoginModal } from '../auth/GoogleLoginModal';
 
 export function Header() {
@@ -35,6 +35,7 @@ export function Header() {
     { name: 'Execution Queue', href: '/emails/scheduled' },
     { name: 'Delivery Archive', href: '/emails/sent' },
     { name: 'Pipeline', href: '/metrics' },
+    { name: 'Settings', href: '/settings' },
   ];
 
   return (
@@ -78,7 +79,7 @@ export function Header() {
             })}
           </nav>
 
-          {/* FAR RIGHT: User Profile & Logout Button */}
+          {/* FAR RIGHT: User Profile Badge & Quick Settings / Logout Links */}
           <div className="flex items-center gap-3 shrink-0">
             {isLoggedIn ? (
               <div className="flex items-center gap-2.5 bg-[#FFFFFF] border border-[#DDD8D1] rounded-full pl-2 pr-3 py-1 shadow-2xs hover:border-[#A34A22]/30 transition-colors">
@@ -94,10 +95,17 @@ export function Header() {
                   <div className="font-semibold text-[#1F1F1F] text-xs leading-tight">{user.name}</div>
                   <div className="text-[10px] text-[#6B6B6B] font-mono leading-tight">{user.email}</div>
                 </div>
+                <Link
+                  href="/settings"
+                  title="Sender Settings"
+                  className="p-1.5 rounded-full text-[#6B6B6B] hover:text-[#A34A22] hover:bg-[#A34A22]/10 transition-colors ml-0.5"
+                >
+                  <Settings className="w-3.5 h-3.5" />
+                </Link>
                 <button
                   onClick={handleLogout}
                   title="Logout"
-                  className="p-1 rounded-full text-[#6B6B6B] hover:text-[#B42318] hover:bg-[#B42318]/10 transition-colors ml-0.5"
+                  className="p-1.5 rounded-full text-[#6B6B6B] hover:text-[#B42318] hover:bg-[#B42318]/10 transition-colors"
                 >
                   <LogOut className="w-3.5 h-3.5" />
                 </button>

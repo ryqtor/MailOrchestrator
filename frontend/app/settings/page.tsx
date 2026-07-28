@@ -140,32 +140,37 @@ export default function SettingsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px] text-slate-400">
-        <RefreshCw className="w-6 h-6 animate-spin mr-2" />
+      <div className="flex items-center justify-center min-h-[400px] text-[#6B6B6B] font-mono text-xs">
+        <RefreshCw className="w-5 h-5 animate-spin mr-2 text-[#A34A22]" />
         Loading sender configuration...
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 max-w-4xl pb-12">
-      <div>
-        <h1 className="text-xl font-bold text-white tracking-tight">System Settings & Real Sender Configuration</h1>
-        <p className="text-xs text-slate-400">Configure Gmail API, real SMTP credentials, rate limits, and authentication</p>
+    <div className="space-y-6 max-w-4xl pb-12 font-sans">
+      {/* Page Header */}
+      <div className="border-b border-[#DDD8D1] pb-4">
+        <h1 className="text-2xl font-serif font-semibold text-[#1F1F1F] tracking-tight">
+          System Settings & Real Sender Configuration
+        </h1>
+        <p className="text-xs text-[#6B6B6B] mt-1 font-sans">
+          Configure Gmail API, real SMTP credentials, rate limits, and transport modes for cold outreach.
+        </p>
       </div>
 
       {saveFeedback && (
         <div
-          className={`p-4 rounded-xl border flex items-center gap-3 text-xs ${
+          className={`p-3.5 rounded-lg border flex items-center gap-3 text-xs font-mono ${
             saveFeedback.type === 'success'
-              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-              : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+              ? 'bg-[#FAF8F5] border-[#1B7F4B] text-[#1B7F4B]'
+              : 'bg-[#FAF8F5] border-[#B42318] text-[#B42318]'
           }`}
         >
           {saveFeedback.type === 'success' ? (
-            <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+            <CheckCircle2 className="w-4.5 h-4.5 text-[#1B7F4B] shrink-0" />
           ) : (
-            <AlertCircle className="w-5 h-5 text-rose-400 shrink-0" />
+            <AlertCircle className="w-4.5 h-4.5 text-[#B42318] shrink-0" />
           )}
           <span>{saveFeedback.message}</span>
         </div>
@@ -173,106 +178,106 @@ export default function SettingsPage() {
 
       {/* Mode Selection Card */}
       <form onSubmit={handleSave} className="space-y-6">
-        <div className="p-6 rounded-2xl bg-card border border-border/80 shadow-lg space-y-6">
-          <div className="flex items-center justify-between border-b border-border/60 pb-4">
+        <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#DDD8D1] shadow-sm space-y-6">
+          <div className="flex items-center justify-between border-b border-[#DDD8D1] pb-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-primary-500/10 text-primary-400">
-                <Mail className="w-5 h-5" />
+              <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#A34A22]">
+                <Mail className="w-4.5 h-4.5" />
               </div>
               <div>
-                <h2 className="text-sm font-bold text-white">Outbound Email Engine Mode</h2>
-                <p className="text-xs text-slate-400">Choose between real email delivery (Gmail / SMTP) or Ethereal Sandbox</p>
+                <h2 className="text-sm font-serif font-semibold text-[#1F1F1F]">Outbound Email Engine Mode</h2>
+                <p className="text-xs text-[#6B6B6B]">Choose between real email delivery (Gmail / SMTP) or Ethereal Sandbox</p>
               </div>
             </div>
             <button
               type="button"
               onClick={handleApplyGmailPreset}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-indigo-600/20 text-indigo-300 border border-indigo-500/30 hover:bg-indigo-600/30 text-xs font-semibold transition"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#A34A22]/10 text-[#A34A22] border border-[#A34A22]/30 hover:bg-[#A34A22]/20 text-xs font-mono font-semibold transition-colors"
             >
-              <Zap className="w-3.5 h-3.5 text-indigo-400" />
+              <Zap className="w-3.5 h-3.5 text-[#A34A22]" />
               Quick Gmail Setup
             </button>
           </div>
 
-          {/* Mode Switch Radio Cards */}
+          {/* Mode Switch Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
             <div
               onClick={() => setIsEthereal(false)}
-              className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${
+              className={`p-4 rounded-lg border cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
                 !isEthereal
-                  ? 'bg-indigo-950/40 border-indigo-500/60 text-white shadow-md'
-                  : 'bg-slate-900/40 border-border/60 text-slate-400 hover:border-slate-700'
+                  ? 'bg-[#FAF8F5] border-[#A34A22] shadow-xs'
+                  : 'bg-[#FFFFFF] border-[#DDD8D1] text-[#6B6B6B] hover:border-[#A34A22]/50'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-200">Real Email Mode (Gmail / SMTP)</span>
+                <span className="font-serif font-bold text-[#1F1F1F]">Real Email Mode (Gmail / SMTP)</span>
                 <input
                   type="radio"
                   name="mode"
                   checked={!isEthereal}
                   onChange={() => setIsEthereal(false)}
-                  className="accent-indigo-500"
+                  className="accent-[#A34A22]"
                 />
               </div>
-              <p className="text-[11px] text-slate-400">
-                Dispatches live emails directly to real inboxes using Gmail API / SMTP credentials.
+              <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
+                Dispatches live emails directly to real inboxes using your Gmail API / SMTP credentials.
               </p>
-              <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 w-fit">
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-mono font-bold bg-[#1B7F4B]/10 text-[#1B7F4B] border border-[#1B7F4B]/30 w-fit">
                 Recommended for Production
               </span>
             </div>
 
             <div
               onClick={() => setIsEthereal(true)}
-              className={`p-4 rounded-xl border cursor-pointer transition flex flex-col justify-between space-y-2 ${
+              className={`p-4 rounded-lg border cursor-pointer transition-all flex flex-col justify-between space-y-3 ${
                 isEthereal
-                  ? 'bg-amber-950/40 border-amber-500/60 text-white shadow-md'
-                  : 'bg-slate-900/40 border-border/60 text-slate-400 hover:border-slate-700'
+                  ? 'bg-[#FAF8F5] border-[#A34A22] shadow-xs'
+                  : 'bg-[#FFFFFF] border-[#DDD8D1] text-[#6B6B6B] hover:border-[#A34A22]/50'
               }`}
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-slate-200">Ethereal Sandbox Mode</span>
+                <span className="font-serif font-bold text-[#1F1F1F]">Ethereal Sandbox Mode</span>
                 <input
                   type="radio"
                   name="mode"
                   checked={isEthereal}
                   onChange={() => setIsEthereal(true)}
-                  className="accent-amber-500"
+                  className="accent-[#A34A22]"
                 />
               </div>
-              <p className="text-[11px] text-slate-400">
+              <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
                 Simulates email dispatch and generates web preview URLs without delivering real emails.
               </p>
-              <span className="px-2 py-0.5 rounded text-[10px] uppercase font-bold bg-amber-500/10 text-amber-400 border border-amber-500/20 w-fit">
-                Testing / Development
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] uppercase font-mono font-bold bg-[#FAF8F5] text-[#6B6B6B] border border-[#DDD8D1] w-fit">
+                Testing / Sandbox
               </span>
             </div>
           </div>
 
-          {/* Profile & SMTP Credentials Form */}
-          <div className="space-y-4 pt-2 border-t border-border/40">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">Sender Identity Profile</h3>
+          {/* Profile & Credentials */}
+          <div className="space-y-4 pt-2 border-t border-[#DDD8D1]">
+            <h3 className="editorial-label">Sender Identity Profile</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
               <div>
-                <label className="block font-semibold uppercase tracking-wider text-slate-400 mb-1">Display Name</label>
+                <label className="block font-mono text-[11px] uppercase text-[#6B6B6B] mb-1 font-semibold">Display Name</label>
                 <input
                   type="text"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="e.g. Acme Sales Team"
                   required
-                  className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-border/80 text-white focus:outline-none focus:border-indigo-500 font-sans"
+                  className="w-full px-3.5 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] text-xs focus:outline-none focus:border-[#A34A22]"
                 />
               </div>
               <div>
-                <label className="block font-semibold uppercase tracking-wider text-slate-400 mb-1">From Email Address</label>
+                <label className="block font-mono text-[11px] uppercase text-[#6B6B6B] mb-1 font-semibold">From Email Address</label>
                 <input
                   type="email"
                   value={fromEmail}
                   onChange={(e) => setFromEmail(e.target.value)}
                   placeholder="e.g. user@gmail.com"
                   required
-                  className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-border/80 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                  className="w-full px-3.5 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] font-mono text-xs focus:outline-none focus:border-[#A34A22]"
                 />
               </div>
             </div>
@@ -280,11 +285,11 @@ export default function SettingsPage() {
             {!isEthereal && (
               <>
                 <div className="flex items-center justify-between pt-2">
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">SMTP Server & Authentication</h3>
+                  <h3 className="editorial-label">SMTP Server & Authentication</h3>
                   <button
                     type="button"
                     onClick={() => setShowGmailHelp(!showGmailHelp)}
-                    className="flex items-center gap-1 text-[11px] text-indigo-400 hover:text-indigo-300 underline"
+                    className="flex items-center gap-1 text-[11px] text-[#A34A22] hover:underline font-mono"
                   >
                     <HelpCircle className="w-3.5 h-3.5" />
                     How to get Gmail App Password?
@@ -292,36 +297,36 @@ export default function SettingsPage() {
                 </div>
 
                 {showGmailHelp && (
-                  <div className="p-4 rounded-xl bg-slate-900/90 border border-indigo-500/30 text-xs text-slate-300 space-y-2">
-                    <p className="font-bold text-indigo-300">How to configure Gmail SMTP with an App Password:</p>
-                    <ol className="list-decimal list-inside space-y-1 text-slate-400 text-[11px]">
-                      <li>Go to your Google Account Security settings: <strong>myaccount.google.com/security</strong></li>
-                      <li>Ensure <strong>2-Step Verification</strong> is enabled on your Google Account.</li>
-                      <li>Search for <strong>"App passwords"</strong> in the search bar.</li>
-                      <li>Create an app password named <em>MailOrchestrator</em> and copy the 16-character password generated.</li>
-                      <li>Set <strong>SMTP Host</strong> to <code className="text-indigo-300">smtp.gmail.com</code>, <strong>Port</strong> to <code className="text-indigo-300">465</code>, <strong>Username</strong> to your Gmail address, and paste the App Password below.</li>
+                  <div className="p-4 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-xs text-[#1F1F1F] space-y-2">
+                    <p className="font-bold text-[#A34A22]">How to configure Gmail SMTP with an App Password:</p>
+                    <ol className="list-decimal list-inside space-y-1 text-[#6B6B6B] text-[11px]">
+                      <li>Go to Google Account Security: <strong>myaccount.google.com/security</strong></li>
+                      <li>Ensure <strong>2-Step Verification</strong> is enabled.</li>
+                      <li>Search for <strong>"App passwords"</strong> in the top search bar.</li>
+                      <li>Create an app password named <em>MailOrchestrator</em> and copy the 16-character code.</li>
+                      <li>Set <strong>SMTP Host</strong> to <code className="text-[#A34A22]">smtp.gmail.com</code>, <strong>Port</strong> to <code className="text-[#A34A22]">465</code>, and paste the App Password below.</li>
                     </ol>
                   </div>
                 )}
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                   <div>
-                    <label className="block font-semibold uppercase tracking-wider text-slate-400 mb-1">SMTP Host</label>
+                    <label className="block font-mono text-[11px] uppercase text-[#6B6B6B] mb-1 font-semibold">SMTP Host</label>
                     <input
                       type="text"
                       value={smtpHost}
                       onChange={(e) => setSmtpHost(e.target.value)}
                       placeholder="smtp.gmail.com"
                       required={!isEthereal}
-                      className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-border/80 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                      className="w-full px-3.5 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] font-mono text-xs focus:outline-none focus:border-[#A34A22]"
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold uppercase tracking-wider text-slate-400 mb-1">SMTP Port</label>
+                    <label className="block font-mono text-[11px] uppercase text-[#6B6B6B] mb-1 font-semibold">SMTP Port</label>
                     <select
                       value={smtpPort}
                       onChange={(e) => setSmtpPort(Number(e.target.value))}
-                      className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-border/80 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                      className="w-full px-3.5 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] font-mono text-xs focus:outline-none focus:border-[#A34A22]"
                     >
                       <option value={465}>465 (Gmail SSL)</option>
                       <option value={587}>587 (TLS / STARTTLS)</option>
@@ -329,7 +334,7 @@ export default function SettingsPage() {
                     </select>
                   </div>
                   <div>
-                    <label className="block font-semibold uppercase tracking-wider text-slate-400 mb-1">SMTP Username / Gmail Address</label>
+                    <label className="block font-mono text-[11px] uppercase text-[#6B6B6B] mb-1 font-semibold">SMTP Username / Gmail</label>
                     <input
                       type="text"
                       value={smtpUser}
@@ -339,59 +344,59 @@ export default function SettingsPage() {
                       }}
                       placeholder="your.email@gmail.com"
                       required={!isEthereal}
-                      className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-border/80 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                      className="w-full px-3.5 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] font-mono text-xs focus:outline-none focus:border-[#A34A22]"
                     />
                   </div>
                   <div>
-                    <label className="block font-semibold uppercase tracking-wider text-slate-400 mb-1">SMTP Password / Gmail App Password</label>
+                    <label className="block font-mono text-[11px] uppercase text-[#6B6B6B] mb-1 font-semibold">SMTP / Gmail App Password</label>
                     <input
                       type="password"
                       value={smtpPass}
                       onChange={(e) => setSmtpPass(e.target.value)}
                       placeholder="••••••••••••••••"
                       required={!isEthereal}
-                      className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-border/80 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                      className="w-full px-3.5 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] font-mono text-xs focus:outline-none focus:border-[#A34A22]"
                     />
                   </div>
                 </div>
               </>
             )}
 
-            {/* Rate Limits */}
+            {/* Rate Limiting */}
             <div className="pt-2">
-              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300 mb-3">Sending Controls & Rate Limiting</h3>
+              <h3 className="editorial-label mb-3">Sending Controls & Rate Limiting</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                 <div>
-                  <label className="block font-semibold uppercase tracking-wider text-slate-400 mb-1">Max Emails Per Hour</label>
+                  <label className="block font-mono text-[11px] uppercase text-[#6B6B6B] mb-1 font-semibold">Max Emails Per Hour</label>
                   <input
                     type="number"
                     value={maxPerHour}
                     onChange={(e) => setMaxPerHour(Number(e.target.value))}
                     min={1}
                     max={10000}
-                    className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-border/80 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                    className="w-full px-3.5 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] font-mono text-xs focus:outline-none focus:border-[#A34A22]"
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold uppercase tracking-wider text-slate-400 mb-1">Minimum Spacing Delay (ms)</label>
+                  <label className="block font-mono text-[11px] uppercase text-[#6B6B6B] mb-1 font-semibold">Minimum Delay (ms)</label>
                   <input
                     type="number"
                     value={minDelayMs}
                     onChange={(e) => setMinDelayMs(Number(e.target.value))}
                     min={0}
                     step={50}
-                    className="w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-border/80 text-white focus:outline-none focus:border-indigo-500 font-mono"
+                    className="w-full px-3.5 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] font-mono text-xs focus:outline-none focus:border-[#A34A22]"
                   />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/60">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-[#DDD8D1]">
             <button
               type="submit"
               disabled={saving}
-              className="px-6 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-lg flex items-center gap-2 disabled:opacity-50"
+              className="px-6 py-2.5 rounded-lg bg-[#A34A22] hover:bg-[#8c3d1b] text-white font-mono text-xs font-bold transition-all shadow-sm flex items-center gap-2 disabled:opacity-50"
             >
               {saving ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Server className="w-4 h-4" />}
               {saving ? 'Saving...' : 'Save Sender Profile'}
@@ -400,15 +405,15 @@ export default function SettingsPage() {
         </div>
       </form>
 
-      {/* Live Connection & Test Email Sender */}
-      <div className="p-6 rounded-2xl bg-card border border-border/80 shadow-lg space-y-4">
-        <div className="flex items-center gap-3 border-b border-border/60 pb-4">
-          <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400">
-            <Send className="w-5 h-5" />
+      {/* Live Connection Test Module */}
+      <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#DDD8D1] shadow-sm space-y-4">
+        <div className="flex items-center gap-3 border-b border-[#DDD8D1] pb-4">
+          <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1B7F4B]">
+            <Send className="w-4.5 h-4.5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white">Test Connection & Send Verification Email</h2>
-            <p className="text-xs text-slate-400">Verify SMTP credentials live by testing connection or dispatching a test email</p>
+            <h2 className="text-sm font-serif font-semibold text-[#1F1F1F]">Test Connection & Send Verification Email</h2>
+            <p className="text-xs text-[#6B6B6B]">Verify SMTP credentials live by testing connection or dispatching a test email</p>
           </div>
         </div>
 
@@ -418,14 +423,14 @@ export default function SettingsPage() {
               type="email"
               value={testRecipient}
               onChange={(e) => setTestRecipient(e.target.value)}
-              placeholder="Optional test email recipient (e.g. target@example.com)"
-              className="flex-1 w-full px-3.5 py-2 rounded-lg bg-slate-900 border border-border/80 text-white focus:outline-none focus:border-indigo-500 font-mono"
+              placeholder="Optional test recipient email (e.g. target@example.com)"
+              className="flex-1 w-full px-3.5 py-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#1F1F1F] font-mono text-xs focus:outline-none focus:border-[#A34A22]"
             />
             <button
               type="button"
               onClick={handleTestConnection}
               disabled={testing}
-              className="w-full sm:w-auto px-5 py-2 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition flex items-center justify-center gap-2 shrink-0 disabled:opacity-50"
+              className="w-full sm:w-auto px-5 py-2 rounded-lg bg-[#1B7F4B] hover:bg-[#15633a] text-white font-mono text-xs font-bold transition-all flex items-center justify-center gap-2 shrink-0 disabled:opacity-50 shadow-2xs"
             >
               {testing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
               {testing ? 'Testing Connection...' : 'Test Connection'}
@@ -434,50 +439,50 @@ export default function SettingsPage() {
 
           {testFeedback && (
             <div
-              className={`p-3.5 rounded-xl border flex items-start gap-2.5 ${
+              className={`p-3.5 rounded-lg border flex items-start gap-2.5 font-mono text-[11px] ${
                 testFeedback.type === 'success'
-                  ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'
-                  : 'bg-rose-500/10 border-rose-500/30 text-rose-300'
+                  ? 'bg-[#FAF8F5] border-[#1B7F4B] text-[#1B7F4B]'
+                  : 'bg-[#FAF8F5] border-[#B42318] text-[#B42318]'
               }`}
             >
               {testFeedback.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
+                <CheckCircle2 className="w-4 h-4 text-[#1B7F4B] shrink-0 mt-0.5" />
               ) : (
-                <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
+                <AlertCircle className="w-4 h-4 text-[#B42318] shrink-0 mt-0.5" />
               )}
-              <span className="font-mono text-[11px] leading-relaxed break-all">{testFeedback.message}</span>
+              <span className="leading-relaxed break-all">{testFeedback.message}</span>
             </div>
           )}
         </div>
       </div>
 
-      {/* Security Info */}
-      <div className="p-6 rounded-2xl bg-card border border-border/80 shadow-lg space-y-4">
-        <div className="flex items-center gap-3 border-b border-border/60 pb-4">
-          <div className="p-2.5 rounded-xl bg-accent-cyan/10 text-accent-cyan">
-            <ShieldCheck className="w-5 h-5" />
+      {/* Security Token Details */}
+      <div className="p-6 rounded-xl bg-[#FFFFFF] border border-[#DDD8D1] shadow-sm space-y-4">
+        <div className="flex items-center gap-3 border-b border-[#DDD8D1] pb-4">
+          <div className="p-2 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1] text-[#A34A22]">
+            <ShieldCheck className="w-4.5 h-4.5" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-white">Authentication & Security Tokens</h2>
-            <p className="text-xs text-slate-400">JWT cookies, CORS policies, and rate limits</p>
+            <h2 className="text-sm font-serif font-semibold text-[#1F1F1F]">Authentication & Security Tokens</h2>
+            <p className="text-xs text-[#6B6B6B]">JWT cookies, CORS policies, and rate limits</p>
           </div>
         </div>
 
-        <div className="space-y-3 text-xs">
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-border/40">
+        <div className="space-y-3 text-xs font-sans">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1]">
             <div>
-              <span className="font-semibold text-white block">Google OAuth Provider</span>
-              <span className="text-[11px] text-slate-400">JWT Session Cookie Enabled</span>
+              <span className="font-semibold text-[#1F1F1F] block">Google OAuth Provider</span>
+              <span className="text-[11px] text-[#6B6B6B] font-mono">JWT Session Cookie Enabled</span>
             </div>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] uppercase font-bold">Active</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-[#1B7F4B]/10 text-[#1B7F4B] border border-[#1B7F4B]/30 text-[10px] font-mono font-bold uppercase">Active</span>
           </div>
 
-          <div className="flex items-center justify-between p-3 rounded-xl bg-slate-900/60 border border-border/40">
+          <div className="flex items-center justify-between p-3 rounded-lg bg-[#FAF8F5] border border-[#DDD8D1]">
             <div>
-              <span className="font-semibold text-white block">API Express Rate Limiter</span>
-              <span className="text-[11px] text-slate-400">10,000 requests per 15-minute window</span>
+              <span className="font-semibold text-[#1F1F1F] block">API Express Rate Limiter</span>
+              <span className="text-[11px] text-[#6B6B6B] font-mono">10,000 requests per 15-minute window</span>
             </div>
-            <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-[10px] uppercase font-bold">Active</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-[#1B7F4B]/10 text-[#1B7F4B] border border-[#1B7F4B]/30 text-[10px] font-mono font-bold uppercase">Active</span>
           </div>
         </div>
       </div>
