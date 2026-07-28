@@ -81,6 +81,59 @@ export const createApp = (): Express => {
   app.use('/senders', senderRoutes);
   app.use('/api/senders', senderRoutes);
 
+  // Debug endpoint: verify which code version Railway is actually running
+  app.get('/api/debug', (_req, res) => {
+    res.json({
+      version: 'v4-instant-dispatch',
+      buildTimestamp: '2026-07-29T04:30:00Z',
+      workerType: 'bulletproof-no-throw',
+      emailServiceType: 'instant-0ms',
+    });
+  });
+
+  // Queue drain: clear failed jobs and reset stuck emails
+  app.post('/api/queue/drain', async (_req, res) => {
+    try {
+      const { PrismaClient, ScheduledEmailStatus } = require('@prisma/client');
+      const { QueueManager } = require('./queue/queueManager');
+      const prismaClient = new PrismaClient();
+      const qm = QueueManager.getInstance();
+
+      // 1. Drain BullMQ failed queue
+      await qm.emailQueue.drain();
+      const failedJobs = await qm.emailQueue.getFailed(0, 1000);
+      for (const job of failedJobs) {
+        await job.remove();
+      }
+
+      // 2. Reset all FAILED and PROCESSING emails back to PENDING
+      const resetResult = await prismaClient.scheduledEmail.updateMany({
+        where: {
+          status: { in: [ScheduledEmailStatus.FAILED, ScheduledEmailStatus.PROCESSING] },
+        },
+        data: {
+          status: ScheduledEmailStatus.PENDING,
+          lastError: null,
+          attempts: 0,
+        },
+      });
+
+      // 3. Reset recipient statuses
+      await prismaClient.emailRecipient.updateMany({
+        where: { status: { in: ['FAILED', 'PENDING'] } },
+        data: { status: 'PENDING', errorMessage: null },
+      });
+
+      res.json({
+        success: true,
+        message: `Queue drained. ${resetResult.count} emails reset to PENDING for reprocessing.`,
+        resetCount: resetResult.count,
+      });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err?.message });
+    }
+  });
+
   // 404 Handler
   app.use('*', (_req, _res, next) => {
     next(new NotFoundError('API Route not found'));

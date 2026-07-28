@@ -57,13 +57,16 @@ export class RateLimiterService {
     if (lastSentStr) {
       const lastSentTime = parseInt(lastSentStr, 10);
       const elapsed = now - lastSentTime;
-      if (elapsed < minDelayMs) {
+      if (elapsed > 0 && elapsed < minDelayMs) {
         spacingDelay = minDelayMs - elapsed;
       }
     }
 
-    // Update last sent timestamp
-    await redisClient.set(lastSentKey, (now + spacingDelay).toString(), 'PX', 60000);
+    // Update last sent timestamp to current time (no compounding)
+    await redisClient.set(lastSentKey, now.toString(), 'PX', 60000);
+
+    // Cap delay to a safe maximum of 1000ms so workers never stall
+    spacingDelay = Math.min(Math.max(spacingDelay, 0), 1000);
 
     return {
       allowed: true,
