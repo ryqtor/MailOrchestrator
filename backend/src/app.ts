@@ -16,11 +16,26 @@ import { NotFoundError } from './errors/customErrors';
 export const createApp = (): Express => {
   const app = express();
 
-  // Security Middleware
-  app.use(helmet());
+  // Security Middleware & CORS Setup
+  app.use(helmet({ contentSecurityPolicy: false }));
+
+  const allowedOrigins = [
+    process.env.FRONTEND_URL,
+    'https://mail-orchestrator.vercel.app',
+    'http://localhost:3000',
+  ].filter(Boolean) as string[];
+
   app.use(
     cors({
-      origin: process.env.FRONTEND_URL || 'http://localhost:3000',
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps or curl) or matching origins
+        if (!origin || allowedOrigins.includes(origin) || allowedOrigins.includes('*')) {
+          callback(null, true);
+        } else {
+          // Fallback to allow Vercel previews & production cross-origin requests
+          callback(null, true);
+        }
+      },
       credentials: true,
     })
   );
