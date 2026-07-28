@@ -207,7 +207,27 @@ export function GoogleLoginModal({ isOpen, onClose, onSuccess }: GoogleLoginModa
             return (
               <div
                 key={acc.id}
-                onClick={() => setSelectedAccount(acc.id)}
+                onClick={() => {
+                  setSelectedAccount(acc.id);
+                  // Instantly log in if clicking reviewer profile
+                  if (acc.id !== 'custom') {
+                    const payload = {
+                      googleId: acc.googleId,
+                      email: acc.email,
+                      name: acc.name,
+                      avatarUrl: acc.avatarUrl,
+                    };
+                    const u: UserProfile = {
+                      id: acc.googleId,
+                      name: acc.name,
+                      email: acc.email,
+                      avatarUrl: acc.avatarUrl,
+                    };
+                    setStoredUser(u);
+                    onSuccess(u);
+                    onClose();
+                  }
+                }}
                 className={`p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between ${
                   isSelected
                     ? 'border-[#A34A22] bg-[#FAF8F5] shadow-2xs'
