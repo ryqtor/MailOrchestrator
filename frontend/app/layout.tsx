@@ -15,10 +15,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <head>
         <title>MailOrchestrator - Cold Email Scheduler</title>
-        <link
-          rel="icon"
-          href="https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTyPJGdqJS2EVY8eE7hmzXhfZNPBN0hBia4I98XptdRcg&s=10"
-        />
+        <link rel="icon" href="https://img.icons8.com/fluent/1200/composing-mail.jpg" />
+        <link rel="shortcut icon" href="https://img.icons8.com/fluent/1200/composing-mail.jpg" />
         <meta name="description" content="Production-grade BullMQ email job scheduler and operations console" />
       </head>
       <body className="bg-[#FAF8F5] text-[#1F1F1F] min-h-screen flex flex-col font-sans antialiased">
