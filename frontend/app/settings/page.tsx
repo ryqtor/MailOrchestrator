@@ -4,7 +4,13 @@ import React, { useState, useEffect } from 'react';
 import { Settings, ShieldCheck, Mail, Server, CheckCircle2, AlertCircle, RefreshCw, Send, HelpCircle, Zap } from 'lucide-react';
 import { EmailSender } from '@/types';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
+const getApiBase = () => {
+  let raw = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  if (!raw.startsWith('http://') && !raw.startsWith('https://')) {
+    raw = `https://${raw}`;
+  }
+  return raw.replace(/\/$/, '');
+};
 
 export default function SettingsPage() {
   const [sender, setSender] = useState<EmailSender | null>(null);
@@ -36,9 +42,12 @@ export default function SettingsPage() {
   const fetchSender = async () => {
     try {
       setLoading(true);
-      const res = await fetch(`${API_BASE}/senders/default`, { cache: 'no-store' });
+      const apiBase = getApiBase();
+      const res = await fetch(`${apiBase}/senders/default`, { cache: 'no-store' });
       if (res.ok) {
-        const json = await res.json();
+        const text = await res.text();
+        let json;
+        try { json = JSON.parse(text); } catch { return; }
         if (json.success && json.data) {
           const s = json.data as EmailSender;
           setSender(s);
@@ -77,7 +86,8 @@ export default function SettingsPage() {
     setSaveFeedback(null);
 
     try {
-      const res = await fetch(`${API_BASE}/senders/${sender.id}`, {
+      const apiBase = getApiBase();
+      const res = await fetch(`${apiBase}/senders/${sender.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -93,12 +103,19 @@ export default function SettingsPage() {
         }),
       });
 
-      const json = await res.json();
+      const text = await res.text();
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(`Server response error (${res.status}): ${text.slice(0, 120)}`);
+      }
+
       if (res.ok && json.success) {
         setSender(json.data);
         setSaveFeedback({ type: 'success', message: 'Sender settings saved successfully!' });
       } else {
-        setSaveFeedback({ type: 'error', message: json.error?.message || 'Failed to save settings' });
+        setSaveFeedback({ type: 'error', message: json.message || json.error?.message || 'Failed to save settings' });
       }
     } catch (err: any) {
       setSaveFeedback({ type: 'error', message: err.message || 'Network error saving settings' });
@@ -112,7 +129,8 @@ export default function SettingsPage() {
     setTestFeedback(null);
 
     try {
-      const res = await fetch(`${API_BASE}/senders/test`, {
+      const apiBase = getApiBase();
+      const res = await fetch(`${apiBase}/senders/test`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -125,7 +143,14 @@ export default function SettingsPage() {
         }),
       });
 
-      const json = await res.json();
+      const text = await res.text();
+      let json;
+      try {
+        json = JSON.parse(text);
+      } catch {
+        throw new Error(`Server returned error status (${res.status}): ${text.slice(0, 120)}`);
+      }
+
       if (res.ok && json.success) {
         setTestFeedback({ type: 'success', message: json.message || 'SMTP Connection Verified Successfully!' });
       } else {

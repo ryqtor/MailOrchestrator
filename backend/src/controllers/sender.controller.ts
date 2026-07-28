@@ -102,7 +102,7 @@ export class SenderController {
     }
   }
 
-  public async testSenderConnection(req: Request, res: Response, next: NextFunction): Promise<void> {
+  public async testSenderConnection(req: Request, res: Response, _next: NextFunction): Promise<void> {
     try {
       const { smtpHost, smtpPort, smtpUser, smtpPass, isEthereal, testRecipient, authType, clientId, clientSecret, refreshToken } = req.body;
 
@@ -121,13 +121,16 @@ export class SenderController {
         testRecipient
       );
 
-      res.status(result.success ? 200 : 400).json({
+      res.status(200).json({
         success: result.success,
         message: result.message,
         data: { messageId: result.messageId },
       });
-    } catch (err) {
-      next(err);
+    } catch (err: any) {
+      res.status(200).json({
+        success: false,
+        message: `SMTP Connection test failed: ${err?.message || 'Invalid configuration or network timeout'}`,
+      });
     }
   }
 }
