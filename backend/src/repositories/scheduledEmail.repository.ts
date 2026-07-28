@@ -101,6 +101,7 @@ export class ScheduledEmailRepository {
         include: {
           recipient: true,
           campaign: { select: { id: true, title: true, subject: true } },
+          logs: { select: { eventType: true, detailsJson: true }, orderBy: { createdAt: 'desc' } },
         },
       }),
       prisma.scheduledEmail.count({ where }),

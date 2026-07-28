@@ -6,6 +6,10 @@ export interface EmailSender {
   id: string;
   name: string;
   fromEmail: string;
+  smtpHost?: string | null;
+  smtpPort?: number | null;
+  smtpUser?: string | null;
+  smtpPass?: string | null;
   isEthereal: boolean;
   maxPerHour: number;
   minDelayMs: number;
@@ -55,6 +59,14 @@ export interface ScheduledEmailItem {
     title: string;
     subject: string;
   };
+  logs?: Array<{
+    eventType: string;
+    detailsJson?: {
+      messageId?: string;
+      previewUrl?: string;
+      error?: string;
+    };
+  }>;
 }
 
 export interface SystemMetrics {

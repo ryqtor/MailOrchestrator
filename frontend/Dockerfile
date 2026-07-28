@@ -8,6 +8,7 @@ RUN npm install
 COPY . .
 
 ENV NEXT_TELEMETRY_DISABLED 1
+RUN mkdir -p public
 RUN npm run build
 
 FROM node:22-alpine AS runner

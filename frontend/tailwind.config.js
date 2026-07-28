@@ -27,7 +27,7 @@ module.exports = {
         },
       },
       fontFamily: {
-        serif: ['"IBM Plex Serif"', 'Georgia', 'serif'],
+        serif: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
         sans: ['"Plus Jakarta Sans"', 'system-ui', 'sans-serif'],
         mono: ['"Fira Code"', 'monospace'],
       },
