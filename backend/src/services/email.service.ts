@@ -131,8 +131,60 @@ export class EmailService {
       }
     }
 
-    // ── TIER 2: Try Real Gmail SMTP Dispatch (Works on Localhost / Unblocked Networks) ──
+    // ── TIER Ethereal: Try Ethereal SMTP Dispatch (Fake SMTP for Sandbox testing) ──
     const smtpConfig = options.smtpConfig;
+    if (smtpConfig && smtpConfig.isEthereal) {
+      try {
+        let user = smtpConfig.user;
+        let pass = smtpConfig.pass;
+        let host = smtpConfig.host || 'smtp.ethereal.email';
+        let port = smtpConfig.port || 587;
+        let secure = smtpConfig.secure ?? false;
+
+        // If no credentials are configured, dynamically generate an Ethereal test account
+        if (!user || !pass) {
+          logger.info('[EmailService] Generating Ethereal test credentials dynamically...');
+          const testAccount = await nodemailer.createTestAccount();
+          user = testAccount.user;
+          pass = testAccount.pass;
+          host = testAccount.smtp.host;
+          port = testAccount.smtp.port;
+          secure = testAccount.smtp.secure;
+          logger.info({ user, pass }, '[EmailService] Ethereal test credentials generated');
+        }
+
+        const transporter = nodemailer.createTransport({
+          host,
+          port,
+          secure,
+          auth: { user, pass },
+        });
+
+        logger.info({ to: options.to }, '[EmailService] Dispatching email via Ethereal SMTP...');
+        const info = await transporter.sendMail({
+          from: options.from,
+          to: options.to,
+          subject: options.subject,
+          html: options.html,
+          text: options.text || options.html.replace(/<[^>]*>?/gm, ''),
+        });
+
+        const previewUrl = nodemailer.getTestMessageUrl(info);
+        logger.info(
+          { messageId: info.messageId, previewUrl },
+          '🎉 EMAIL DELIVERED TO ETHEREAL SMTP SANDBOX!'
+        );
+
+        return {
+          messageId: info.messageId,
+          previewUrl: previewUrl || false,
+        };
+      } catch (err: any) {
+        logger.warn({ err: err?.message }, '[EmailService] Ethereal SMTP dispatch failed. Falling back...');
+      }
+    }
+
+    // ── TIER 2: Try Real Gmail SMTP Dispatch (Works on Localhost / Unblocked Networks) ──
     if (smtpConfig && smtpConfig.user && smtpConfig.pass) {
       try {
         const cleanPass = smtpConfig.pass.replace(/\s+/g, '');

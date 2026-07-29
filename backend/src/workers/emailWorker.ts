@@ -154,6 +154,13 @@ export class EmailWorker {
         to: recipient.email,
         subject: renderedSubject,
         html: renderedBody,
+        smtpConfig: scheduledEmail.sender ? {
+          host: scheduledEmail.sender.smtpHost,
+          port: scheduledEmail.sender.smtpPort,
+          user: scheduledEmail.sender.smtpUser,
+          pass: scheduledEmail.sender.smtpPass,
+          isEthereal: scheduledEmail.sender.isEthereal,
+        } : undefined,
       });
 
       // 6. DB STATE TRANSITION (SENT) — GUARANTEED UPDATES
@@ -168,6 +175,23 @@ export class EmailWorker {
         });
       } catch (err) {
         logger.error({ err }, '[EmailWorker] ScheduledEmail update to SENT failed');
+      }
+
+      // Log EMAIL_SENT event to database for audit history (stores Ethereal preview link if generated)
+      try {
+        await prisma.emailLog.create({
+          data: {
+            campaignId: campaign.id,
+            emailId: emailId,
+            eventType: 'EMAIL_SENT',
+            detailsJson: {
+              messageId: sendResult.messageId,
+              previewUrl: sendResult.previewUrl || undefined,
+            },
+          },
+        });
+      } catch (err) {
+        logger.error({ err }, '[EmailWorker] EmailLog creation for EMAIL_SENT failed');
       }
 
       try {
