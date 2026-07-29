@@ -231,7 +231,7 @@ MailOrchestrator/
 ### Backend Features (Mapped to Assignment Requirements)
 
 | # | Requirement | Implementation | Status |
-| :---: | :--- | :--- | :---: |
+| :---: | :---: | :---: | :---: |
 | 1 | **No Cron Jobs** | Pure BullMQ delayed jobs with `addBulk()`. Delay calculated as `scheduledFor.getTime() - Date.now()`. Redis sorted set stores jobs by execution timestamp. | ✅ |
 | 2 | **Relational DB Storage** | PostgreSQL with Prisma ORM. 7 models: `User`, `EmailSender`, `EmailCampaign`, `EmailRecipient`, `ScheduledEmail`, `EmailLog`, `WorkerState`. | ✅ |
 | 3 | **Email Scheduling via API** | `POST /api/campaigns` accepts title, subject, bodyTemplate, recipients array, scheduledAt, minDelayMs, maxPerHour. Also supports CSV upload via `POST /api/campaigns/upload`. | ✅ |
@@ -247,7 +247,7 @@ MailOrchestrator/
 ### Frontend Features (Mapped to Assignment Requirements)
 
 | # | Requirement | Implementation | Status |
-| :---: | :--- | :--- | :---: |
+| :---: | :---: | :---: | :---: |
 | 1 | **Google OAuth Login** | Clerk-powered Google OAuth 2.0. After login, redirects to dashboard. Header shows user name, email, avatar, and logout button. | ✅ |
 | 2 | **Main Dashboard** | Header with user info + logout. Tabbed sections for Scheduled/Sent emails. "Compose New Email" primary button. Redis rate limit capacity panel with real-time counters. | ✅ |
 | 3 | **Compose New Email** | Full compose modal + dedicated `/compose` page. Subject, body with `{{name}}`, `{{company}}` template variables. CSV file upload with validation. Paste recipient list. Start time picker. Configurable delay and hourly cap. Live template preview. | ✅ |
@@ -268,7 +268,7 @@ MailOrchestrator/
 | **Live Template Preview** | Real-time preview of email body with template variables resolved using sample recipient data |
 | **Audit Logging** | Every email lifecycle event (SCHEDULED, SENT, FAILED, RETRY, RATE_LIMITED) is logged to `EmailLog` table |
 | **Docker Compose** | One-command full-stack setup: `docker-compose up --build` |
-| **Reviewer Quick Access** | Pre-populated reviewer accounts (Mitrajit Lead, Sarvagya Chaudhary) for instant sign-in during review |
+| **Reviewer Quick Access** | Pre-populated reviewer accounts (Mitrajit Lead, Gokul Yadav) for instant sign-in during review |
 
 ---
 
@@ -496,31 +496,33 @@ Open [http://localhost:3000](http://localhost:3000) in your browser.
 
 ---
 
-## 📧 Ethereal Email Setup
-
-[Ethereal Email](https://ethereal.email/) is a fake SMTP service for testing — emails are captured and viewable via web preview links instead of being delivered to real inboxes.
-
-### How It Works in MailOrchestrator
-
-1. When no real SMTP sender is configured, the system **automatically generates an Ethereal test account** on first email dispatch.
-2. Ethereal credentials are logged in the backend console.
-3. Each sent email generates an **Ethereal preview URL** — click it to view the rendered email in your browser.
-
-### Configuring a Sender
-
-1. Navigate to **Settings** (`/settings`) in the dashboard.
-2. Choose one of:
-   - **Ethereal (Sandbox)**: Toggle "Use Ethereal" — no credentials needed, auto-generated.
-   - **Gmail App Password**: Enter your Gmail address and a 16-character [Google App Password](https://myaccount.google.com/apppasswords).
-3. Click **Test Connection** to verify SMTP connectivity.
-4. Click **Save Sender** to persist the configuration.
-
-### Gmail App Password Quick Guide
-
-1. Go to [Google Account → App Passwords](https://myaccount.google.com/apppasswords)
-2. Select "Mail" as the app and generate a password
-3. Copy the 16-character password (spaces are auto-stripped by the system)
-4. Enter it in the Settings page SMTP Password field
+    data: { status: 'PROCESSING', attempts: { increment: 1 } }
+  });
+  ```
+  If the updated count is `0`, the job is discarded as a duplicate.
+- **Server Restart Resilience**: When the backend server boots, `recoveryService.recoverPendingJobs()` is executed. It:
+  1. Resets any stale `PROCESSING` jobs back to `PENDING`.
+  2. Scans the database for all `PENDING` emails and checks if they are registered in Redis.
+  3. If any job is missing from Redis, it is re-enqueued with the correct remaining delay, preserving its original schedule.
 
 ---
 
+## 🎨 Features Implemented
+
+### Backend Core
+- **Microservice API**: Core endpoints for campaigns, scheduled emails, sent emails, senders, and metrics.
+- **Dynamic Template Renderer**: Compiles HTML custom variables (e.g., `{{name}}`, `{{company}}`) dynamically per recipient.
+- **Reliable Worker & standalone runner**: Custom script setup to run worker threads standalone or inline with the API.
+
+### Frontend Dashboard
+- **Reviewer Accounts (OAuth Simulation)**: Pre-populated quick-access profiles for `Mitrajit Lead` and `Gokul Yadav` (Yadav036) as requested, allowing reviewers to instantly experience Google Login.
+- **Live Sync Dashboard**: Polls metrics, queue sizes, and email logs in real-time.
+- **Compose Interface**: Features template previews, customized delay/limit configurations, start time picker, and a custom CSV lead-parser with detailed format validation logs.
+- **Tables & Filtering**: Interactive tables for Scheduled and Sent emails with proper loading and empty states.
+
+---
+
+## ⚙️ Assumptions & Trade-offs
+1. **Google Login Mock**: A custom Google sign-in modal is implemented displaying reviewer profiles and a custom input. It makes real API calls to the backend `/api/auth/google` to register/sync, but allows mock login details for convenience.
+2. **Ethereal Mail**: The fake SMTP transport logs active URLs in the console for each outbound email where developers can view mock inbox dispatches.
+>>>>>>> 6d3a15c (revoke access)

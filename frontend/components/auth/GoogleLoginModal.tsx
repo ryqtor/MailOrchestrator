@@ -11,17 +11,17 @@ interface GoogleLoginModalProps {
 }
 
 export function GoogleLoginModal({ isOpen, onClose, onSuccess }: GoogleLoginModalProps) {
-  const [selectedAccount, setSelectedAccount] = useState<string>('sarvagya');
+  const [selectedAccount, setSelectedAccount] = useState<string>('yadav036');
   const [customEmail, setCustomEmail] = useState<string>('');
   const [customName, setCustomName] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
   const googleAccounts = [
     {
-      id: 'sarvagya',
-      name: 'Sarvagya Chaudhary',
-      email: 'sarvagya-chaudhary@reachinbox.ai',
-      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=SarvagyaChaudhary',
+      id: 'yadav036',
+      name: 'Gokul Yadav',
+      email: 'yadav036@reachinbox.ai',
+      avatarUrl: 'https://api.dicebear.com/7.x/avataaars/svg?seed=GokulYadav',
       googleId: 'google_oauth_sub_1098234710293',
       badge: 'Reviewer Account',
     },

@@ -68,7 +68,7 @@ export default function SignInPage() {
                 <span>Reviewer Quick Access</span>
               </div>
               <p className="text-[11px] text-[#6B6B6B] leading-relaxed">
-                Includes pre-populated reviewer profiles for <strong>Mitrajit Lead</strong> and <strong>Sarvagya Chaudhary</strong>.
+                Includes pre-populated reviewer profiles for <strong>Mitrajit Lead</strong> and <strong>Gokul Yadav</strong>.
               </p>
             </div>
           </div>

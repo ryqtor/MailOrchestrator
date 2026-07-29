@@ -69,14 +69,71 @@ export class EmailWorker {
       const { recipient, campaign } = scheduledEmail;
 
       // 3. RATE LIMIT CHECK (Safe non-blocking)
+      let rateLimitResult;
       try {
-        await rateLimiterService.checkAndIncrement(
+        rateLimitResult = await rateLimiterService.checkAndIncrement(
           senderId,
           scheduledEmail.sender?.maxPerHour || 500,
           scheduledEmail.sender?.minDelayMs || 100
         );
       } catch (rlErr) {
-        logger.warn({ rlErr }, '[EmailWorker] Rate limiter check warning');
+        logger.error({ rlErr, emailId }, '[EmailWorker] Rate limiter check failed');
+      }
+
+      if (rateLimitResult && !rateLimitResult.allowed) {
+        // Revert status to PENDING so it can be picked up when rescheduled
+        await prisma.scheduledEmail.update({
+          where: { id: emailId },
+          data: { status: ScheduledEmailStatus.PENDING },
+        });
+
+        // Import jobProducer dynamically to avoid circular dependencies
+        const { jobProducer } = await import('../queue/jobProducer.js');
+        const newJobId = await jobProducer.rescheduleJob(
+          {
+            emailId: scheduledEmail.id,
+            campaignId: scheduledEmail.campaignId,
+            recipientId: scheduledEmail.recipientId,
+            senderId: scheduledEmail.senderId,
+            scheduledFor: new Date(Date.now() + rateLimitResult.delayMs).toISOString(),
+          },
+          rateLimitResult.delayMs
+        );
+
+        if (newJobId) {
+          await this.scheduledEmailRepo.setJobId(scheduledEmail.id, newJobId);
+        }
+
+        // Log RATE_LIMITED event to database
+        await prisma.emailLog.create({
+          data: {
+            campaignId: scheduledEmail.campaignId,
+            emailId: scheduledEmail.id,
+            eventType: 'RATE_LIMITED',
+            detailsJson: {
+              delayMs: rateLimitResult.delayMs,
+              senderId,
+              currentCount: rateLimitResult.currentCount,
+              maxLimit: rateLimitResult.maxLimit,
+            },
+          },
+        });
+
+        logger.info(
+          { emailId, delayMs: rateLimitResult.delayMs, newJobId },
+          '[EmailWorker] Rate limit exceeded. Reverted status to PENDING and rescheduled job.'
+        );
+
+        return { status: 'rate_limited', delayMs: rateLimitResult.delayMs };
+      }
+
+      // Spacing delay to mimic provider throttling (minimum delay between sends)
+      if (rateLimitResult && rateLimitResult.delayMs > 0) {
+        logger.info(
+          { emailId, delayMs: rateLimitResult.delayMs },
+          '[EmailWorker] Applying spacing delay before dispatch'
+        );
+        await new Promise((resolve) => setTimeout(resolve, rateLimitResult.delayMs));
       }
 
       // 4. TEMPLATE RENDERING
